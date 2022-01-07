@@ -3,18 +3,23 @@
 #include <stdio.h> 
 #include <stdlib.h>
 
-int A[100][100];
+#define N 20
+
+int A[N][N];
 
 int main(){
-    for(int i = 0; i < 100; i++){
-        for(int j = 0; j < 100; j++){
+    for(int i = 0; i < N; i++){
+        for(int j = 0; j < N; j++){
             A[i][j] = rand()%2;
+			if (i == j)
+				A[i][j] = 1;
         }
     }
-	 for(int i = 0; i < 100; i++){
-        for(int j = 0; j < 100; j++){
+	 for(int i = 0; i < N; i++){
+        for(int j = 0; j < N; j++){
             printf("%d ", A[i][j]);
         }
-		prinftf("\n");
+		printf("\n");
     }
+
 }
