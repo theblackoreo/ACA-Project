@@ -2,8 +2,17 @@
 
 #include <stdio.h> 
 
+int A[100][100];
+
+
 
 int main(){
 
-    
+    for(int j = 0; j < 100; j++){
+        for(int i = 0; i < 100; i++){
+            if(i%2 != 0){ 
+                A[i][j] = 1;
+            }
+        }
+    }
 }
