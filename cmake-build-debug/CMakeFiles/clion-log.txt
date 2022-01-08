@@ -1,0 +1,5 @@
+/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/Applications/CLion.app/Contents/bin/ninja/mac/ninja -DCMAKE_C_COMPILER=/Library/Developer/CommandLineTools/usr/bin/cc -DCMAKE_CXX_COMPILER=/Library/Developer/CommandLineTools/usr/bin/c++ -G Ninja /Users/fabiotagliani/Desktop/ACA-Project
+-- Found OpenCV: /usr/local/Cellar/opencv/4.5.4_2 (found version "4.5.4") 
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/fabiotagliani/Desktop/ACA-Project/cmake-build-debug
