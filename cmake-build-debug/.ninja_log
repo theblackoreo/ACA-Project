@@ -1,3 +1,7 @@
 # ninja log v5
+0	112	1641810416480513546	build.ninja	d865bb396b793e5f
 0	1251	1641664637146143654	CMakeFiles/Test1_DistanceTransform.dir/Users/fabiotagliani/CLionProjects/ACA-Project/Test1_DistanceTransform.cpp.o	8dc9d8dfbd15a201
 1252	1399	1641664637299830359	Test1_DistanceTransform	a9f7e2cdf280a8b4
+3	1016	1641810354437209919	CMakeFiles/Test1_DistanceTransform.dir/testDil.cpp.o	89cbc0f661724f45
+0	118	1641810416480513546	build.ninja	d865bb396b793e5f
+2	101	1641810416608232750	Test1_DistanceTransform	a9f7e2cdf280a8b4
