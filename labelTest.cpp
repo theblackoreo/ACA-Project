@@ -9,7 +9,7 @@
 
   int A[N][N]; //main matrix
   bool C[N][N]; // check matrix
-  int LABELS [4][N]; // border matrix
+  int LABELS[4][N]; // border matrix
 
   // check near bytes from a specific position
   bool checkNearByte(int label, int r, int c){
@@ -46,6 +46,25 @@
       if(count == 0) return true;
       return cond;
 
+  }
+
+  // find correct maze track to follow 
+  int checkSolutionLabel(int matrix[4][N]){
+    int correctLabel[N] = {};
+    int count = 0;
+
+    for(int i = 0; i < 4; i++){
+      for(int j = 0; j < N; j++){
+        if(matrix[i][j] != 0) {
+          correctLabel[matrix[i][j]+1]++;
+        }
+      }
+    }
+
+    for(int i = 0; i < N; i++){
+      if(correctLabel[i] > 1) return i-1;
+    }
+    return 0;
   }
 
   int main(){
@@ -138,6 +157,8 @@
           }
           printf("\n");
       }
+
+      printf("Label to follow for solution: %d\n", checkSolutionLabel(LABELS));
 
 
 
