@@ -65,6 +65,7 @@ int main( int argc, char** argv )
   src = imread("test.png", IMREAD_REDUCED_GRAYSCALE_2);
 
   threshold(src, src, 127,255,THRESH_BINARY);
+  
 
   cout << "src = " << endl << " "  << src << endl << endl;
 
