@@ -297,15 +297,16 @@
     int cols = src.cols;
     int label = 1;
 
+/*
     //Complememt
-    for(int i = 0; i < rows-1; i++){
-           for(int j = 0; j < cols-1; j++){
+    for(int i = 0; i < rows; i++){
+           for(int j = 0; j < cols; j++){
                src.at<unsigned char>(i,j) =  (src.at<unsigned char>(i,j) - 1)* (-1);
            }
        }
 
     imshow( "Complement", src*255);
-
+*/
     // labelization
     for(int i = 1; i < rows-1; i++){
         for(int j = 1; j < cols-1; j++){
