@@ -65,9 +65,13 @@ int main( int argc, char** argv )
   src = imread("test.png", IMREAD_REDUCED_GRAYSCALE_2);
 
   threshold(src, src, 127,255,THRESH_BINARY);
-  
 
-  cout << "src = " << endl << " "  << src << endl << endl;
+
+  //cout << "src = " << endl << " "  << src << endl << endl;
+
+  cv::Mat M(N, N, CV_64F);
+  std::memcpy(M.data, A, N*N*sizeof(int));
+  src = M;
 
   if( src.empty() )
   {
@@ -78,44 +82,28 @@ int main( int argc, char** argv )
   namedWindow( "Erosion Demo", WINDOW_AUTOSIZE );
   namedWindow( "Dilation Demo", WINDOW_AUTOSIZE );
   moveWindow( "Dilation Demo", src.cols, 0 );
-  createTrackbar( "Element:\n 0: Rect \n 1: Cross \n 2: Ellipse", "Erosion Demo",
-          &erosion_elem, max_elem,
-          Erosion );
-  createTrackbar( "Kernel size:\n 2n +1", "Erosion Demo",
-          &erosion_size, max_kernel_size,
-          Erosion );
-  createTrackbar( "Element:\n 0: Rect \n 1: Cross \n 2: Ellipse", "Dilation Demo",
-          &dilation_elem, max_elem,
-          Dilation );
-  createTrackbar( "Kernel size:\n 2n +1", "Dilation Demo",
-          &dilation_size, max_kernel_size,
-          Dilation );
-  Erosion( 0, 0 );
+
+  //Erosion( 0, 0 );
   Dilation( 0, 0 );
   waitKey(0);
   return 0;
 }
+
 void Erosion( int, void* )
 {
-  int erosion_type = 0;
-  if( erosion_elem == 0 ){ erosion_type = MORPH_RECT; }
-  else if( erosion_elem == 1 ){ erosion_type = MORPH_CROSS; }
-  else if( erosion_elem == 2) { erosion_type = MORPH_ELLIPSE; }
-  Mat element = getStructuringElement( erosion_type,
+
+  Mat element = getStructuringElement( MORPH_RECT,
                        Size( 2*erosion_size + 1, 2*erosion_size+1 ),
                        Point( erosion_size, erosion_size ) );
-  erode( src, erosion_dst, element );
+  erode( src, M, element );
   imshow( "Erosion Demo", erosion_dst );
 }
+
 void Dilation( int, void* )
 {
-  int dilation_type = 0;
-  if( dilation_elem == 0 ){ dilation_type = MORPH_RECT; }
-  else if( dilation_elem == 1 ){ dilation_type = MORPH_CROSS; }
-  else if( dilation_elem == 2) { dilation_type = MORPH_ELLIPSE; }
-  Mat element = getStructuringElement( dilation_type,
+  Mat element = getStructuringElement( MORPH_RECT,
                        Size( 2*dilation_size + 1, 2*dilation_size+1 ),
                        Point( dilation_size, dilation_size ) );
-  dilate( src, dilation_dst, element );
+  dilate( src, M, element );
   imshow( "Dilation Demo", dilation_dst );
 }
