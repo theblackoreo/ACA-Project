@@ -11,6 +11,17 @@
   bool C[N][N]; // check matrix
   int LABELS[4][N]; // border matrix
 
+  //show matrix
+  void printMatrix(int matrix[N][N]) {
+  for(int i = 0; i < N; i++){
+          for(int j = 0; j < N; j++){
+                printf("%d ", matrix[i][j]);
+          }
+          printf("\n");
+      }
+      printf("\n");printf("\n");printf("\n");printf("\n");printf("\n");
+}
+
   // check near bytes from a specific position
   bool checkNearByte(int label, int r, int c){
 
@@ -87,6 +98,7 @@
           A[j][0] = 0;
           A[j][6] = 0;
       }
+        A[2][5] = 0;
         A[0][3] = 1;
         A[1][6] = 1;
 
@@ -130,7 +142,7 @@
       }
 
 
-      // check if exists a track
+      // check if a track exists
       for(int j = 0; j < N; j++){
                   LABELS[0][j] = A[0][j];
                   LABELS[1][j] = A[N-1][j];
@@ -149,17 +161,20 @@
           printf("\n");
       }
 
-      printf("\n");printf("\n");printf("\n");printf("\n");printf("\n");
 
-      for(int i = 0; i < N; i++){
-          for(int j = 0; j < N; j++){
-                printf("%d ", A[i][j]);
-          }
-          printf("\n");
-      }
+      printMatrix(A);
 
-      printf("Label to follow for solution: %d\n", checkSolutionLabel(LABELS));
 
+    int path = checkSolutionLabel(LABELS);
+    printf("Label to follow for solution: %d\n", path);
+
+    for(int i = 0; i<N; i++)
+        for(int j = 0 ; j<N; j++){
+        if(A[i][j] != path)
+            A[i][j]= 0;
+        }
+    printMatrix(A);
 
 
   }
+
