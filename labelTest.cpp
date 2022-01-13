@@ -21,6 +21,7 @@
   int maxit = 1;
   void Erosion( int, void* );
   void Dilation( int, void* );
+  int rows, cols;
 
   #define N 7 //dimension test matrix
 
@@ -85,35 +86,43 @@
 
     if(C[r][c] == true) return false;
     else C[r][c] = true;
-    int count = 0;
-    bool cond;
 
-        if( src.at<unsigned char>(r+1,c)==1){
+    bool cond = false;
+    bool c1, c2, c3, c4 = false;
+
+        if( src.at<unsigned char>(r+1,c)==1 && r != rows ){
           src.at<unsigned char>(r+1,c) = label;
-          checkNearByte(label, r+1, c, src);
-          cond = true;
+          c1 = checkNearByte(label, r+1, c, src);
         }
 
-        if( src.at<unsigned char>(r-1,c)==1){
+        if( src.at<unsigned char>(r-1,c)==1 && r != 0){
           src.at<unsigned char>(r-1,c) = label;
-          cond = checkNearByte(label, r-1, c, src);
-          cond = true;
+          c2 =checkNearByte(label, r-1, c, src);
         }
 
-        if(src.at<unsigned char>(r,c+1)==1){
+        if(src.at<unsigned char>(r,c+1)==1 && c!= cols){
           src.at<unsigned char>(r,c+1) = label;
-          cond = checkNearByte(label, r, c+1, src);
-          cond = true;
+          c3 = checkNearByte(label, r, c+1, src);
         }
 
-        if(src.at<unsigned char>(r,c-1)==1){
+        if(src.at<unsigned char>(r,c-1)==1 && c!=0){
           src.at<unsigned char>(r,c-1) = label;
-          cond = checkNearByte(label, r, c-1, src);
-          cond = true;
+          c4 = checkNearByte(label, r, c-1, src);
         }
 
-      if(count == 0) return true;
-      return cond;
+        if(C[r+1][c] == true && C[r-1][c] == true && C[r][c-1] == true && C[r][c+1] == true){
+          cond = true;
+        } else {
+          cond = false;
+        }
+
+        if(c1 && c2 && c3 &&c4 && cond){
+          cond = true;
+        } else {
+          cond = false;
+        }
+
+        return cond;
 
   }
 
@@ -284,17 +293,18 @@
     namedWindow( "Complement", WINDOW_AUTOSIZE );
 
     namedWindow( "Source", WINDOW_AUTOSIZE );
-    moveWindow( "Dilation Demo", N, 0 );
+    moveWindow( "LABEL", N, 0 );
     moveWindow( "Source", N, 0 );
 
     //show original image
     imshow( "Source", src*255);
 
     //print original image
-  //  cout << "src = " << endl << " "  << src << endl << endl;
 
-    int rows = src.rows;
-    int cols = src.cols;
+    cout << "SOURCE = " << endl << " "  << src << endl << endl;
+
+    rows = src.rows;
+    cols = src.cols;
     int label = 1;
 
 /*
@@ -308,18 +318,22 @@
     imshow( "Complement", src*255);
 */
     // labelization
-    for(int i = 1; i < rows-1; i++){
-        for(int j = 1; j < cols-1; j++){
+    for(int i = 0; i < rows; i++){
+        for(int j = 0; j < cols; j++){
             if (src.at<unsigned char>(i,j) == 1){
                if(C[i][j]== false) src.at<unsigned char>(i,j) = label;
-              if(checkNearByte(label, i, j, src) == true) label++;
+               if(checkNearByte(label, i, j, src) == true) label++;
+            }
+            else {
+              C[i][j] = true;
             }
         }
     }
 
-    cout << "src = " << endl << " "  << src << endl << endl;
-    imshow( "Dilation Demo", src*50);
-    //int LABELS[][] = {};
+    cout << "LABEL = " << endl << " "  << src << endl << endl;
+
+    imshow( "LABEL", src*50);
+
     int quattro = 4;
     if(rows > cols){
       maxit = rows;
@@ -378,8 +392,7 @@
 
     printf("Track to follow: %d\n", trackToFollow);
 
-    namedWindow( "DilationOK", WINDOW_AUTOSIZE );
-
+  //  namedWindow( "DilationOK", WINDOW_AUTOSIZE );
 
     for(int i = 0; i<rows; i++)
         for(int j = 0 ; j<cols; j++){
@@ -390,13 +403,31 @@
             }
         }
 
+    namedWindow( "correctTrack", WINDOW_AUTOSIZE );
+    imshow( "correctTrack", src *255);
 
-    Dilation(0, 0, src, dilation_dst);
+    cout << "after change bits = " << endl << " "  << src << endl << endl;
 
 
-    //imshow( "DilationOK", dilation_dst );
+
+    Mat element = getStructuringElement( MORPH_RECT,
+                         Size(3,3));
+    dilate(src, dilation_dst, element);
+
+    imshow( "DilationOK", dilation_dst *255);
 
     cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
+
+
+    //erosion(src, erosion_dst, element);
+
+    for(int i = 0; i < rows; i++){
+            for(int j = 0; j < cols; j++){
+                  printf("%d ", C[i][j]);
+            }
+            printf("\n");
+        }
+
 
     waitKey(0);
     return 0;
