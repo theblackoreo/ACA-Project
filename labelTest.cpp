@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cmath>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 #include "opencv2/imgcodecs/imgcodecs.hpp"
@@ -23,63 +24,6 @@ void Erosion( int, void* );
 void Dilation( int, void* );
 int rows, cols;
 
-#define N 7 //dimension test matrix
-
-int A[N][N]; //main matrix
-bool C[N][N] = {}; // check matrix
-
-
-//show matrix
-void printMatrix(int matrix[N][N]) {
-  for(int i = 0; i < N; i++){
-    for(int j = 0; j < N; j++){
-      printf("%d ", matrix[i][j]);
-    }
-    printf("\n");
-  }
-  printf("\n");printf("\n");printf("\n");printf("\n");printf("\n");
-}
-
-/*
-
-// check near bytes from a specific position
-bool checkNearByte(int label, int r, int c){
-
-if(C[r][c] == true) return false;
-else C[r][c] = true;
-int count = 0;
-bool cond;
-
-if( A[r+1][c]==1){
-A[r+1][c] = label;
-checkNearByte(label, r+1, c);
-cond = true;
-}
-
-if( A[r-1][c]==1){
-A[r-1][c] = label;
-cond = checkNearByte(label, r-1, c);
-cond = true;
-}
-
-if(A[r][c+1]==1){
-A[r][c+1] = label;
-cond = checkNearByte(label, r, c+1);
-cond = true;
-}
-
-if(A[r][c-1]==1){
-A[r][c-1] = label;
-cond = checkNearByte(label, r, c-1);
-cond = true;
-}
-
-if(count == 0) return true;
-return cond;
-
-}
-
-*/
 
 // direction vectors
 const int dx[] = {+1, 0, -1, 0};
@@ -88,105 +32,25 @@ const int dy[] = {0, +1, 0, -1};
 void checkNearByte(int current_label, int r, int c, Mat src) {
   if (r < 0 || r == rows) return; // out of bounds
   if (c < 0 || c == cols) return; // out of bounds
-  if (label_dst.at<unsigned char>(r,c) || !src.at<unsigned char>(r,c)) return; // already labeled or not marked with 1 in m
+  if (label_dst.at<unsigned char>(r,c) || !src.at<unsigned char>(r,c)) return; // already labeled or not marked with 1 in src
 
   // mark the current cell
   label_dst.at<unsigned char>(r,c) = current_label;
 
   // recursively mark the neighbors
   for (int direction = 0; direction < 4; ++direction)
-    checkNearByte(current_label, r + dx[direction], c + dy[direction], src);
+  checkNearByte(current_label, r + dx[direction], c + dy[direction], src);
 }
 
 void find_components() {
   int component = 0;
   for (int i = 0; i < rows; i++)
-    for (int j = 0; j < cols; j++)
-      if (!label_dst.at<unsigned char>(i,j) && src.at<unsigned char>(i,j)) {
-        checkNearByte(++component, i, j, src);
-        printf("Sono entrato con i=%d e j=%d mentre label=%d\n", i, j, component);
-      }
+  for (int j = 0; j < cols; j++)
+  if (!label_dst.at<unsigned char>(i,j) && src.at<unsigned char>(i,j)) {
+    checkNearByte(++component, i, j, src);
+    printf("Sono entrato con i=%d e j=%d mentre label=%d\n", i, j, component);
+  }
 }
-
-/*
-// check near bytes from a specific position
-bool checkNearByte(int label, int r, int c, Mat src){
-
-if(C[r][c] == true) return false;
-else C[r][c] = true;
-
-bool cond = false;
-bool c1, c2, c3, c4 = false;
-
-if( src.at<unsigned char>(r+1,c)==1 && r != rows ){
-src.at<unsigned char>(r+1,c) = label;
-c1 = checkNearByte(label, r+1, c, src);
-} else if (r == rows) {
-c1 = true;
-}
-
-if( src.at<unsigned char>(r-1,c)==1 && r != 0){
-src.at<unsigned char>(r-1,c) = label;
-c2 =checkNearByte(label, r-1, c, src);
-}else if (r == 0) {
-c2 = true;
-}
-
-if(src.at<unsigned char>(r,c+1)==1 && c!= cols){
-src.at<unsigned char>(r,c+1) = label;
-c3 = checkNearByte(label, r, c+1, src);
-} else if (c == cols) {
-c3 = true;
-}
-
-if(src.at<unsigned char>(r,c-1)==1 && c!=0){
-src.at<unsigned char>(r,c-1) = label;
-c4 = checkNearByte(label, r, c-1, src);
-} else if (c == 0) {
-c4 = true;
-}
-
-if(C[r+1][c] == true && C[r-1][c] == true && C[r][c-1] == true && C[r][c+1] == true){
-cond = true;
-} else {
-cond = false;
-}
-
-if(c1 && c2 && c3 &&c4 && cond){
-cond = true;
-} else {
-cond = false;
-}
-
-return cond;
-
-}
-
-*/
-
-/*
-
-// find correct maze track to follow
-int checkSolutionLabel(int matrix[4][maxit]){
-int correctLabel[maxit];
-int count = 0;
-
-for(int i = 0; i < 4; i++){
-for(int j = 0; j < maxit; j++){
-if(matrix[i][j] != 0) {
-correctLabel[matrix[i][j]+1]++;
-}
-}
-}
-
-for(int i = 0; i < maxit; i++){
-if(correctLabel[i] > 1) return i-1;
-}
-return 0;
-}
-
-*/
-
 
 void Erosion( int, void*, Mat src, Mat erosion_dst)
 {
@@ -207,317 +71,153 @@ void Erosion( int, void*, Mat src, Mat erosion_dst)
 
 
     int main(){
+
+      //CommandLineParser parser( argc, argv, "{@input | test.png | input image}" );
+      src = imread("test6.png", IMREAD_REDUCED_GRAYSCALE_2);
+
+      threshold(src, src, 127,1,THRESH_BINARY);
+
+      // namedWindow( "Erosion Demo", WINDOW_AUTOSIZE );
+      // namedWindow( "Dilation Demo", WINDOW_AUTOSIZE );
+      // namedWindow( "Complement", WINDOW_AUTOSIZE );
+      // namedWindow( "Source", WINDOW_AUTOSIZE );
+      // namedWindow( "Solution Demo", WINDOW_AUTOSIZE );
+
+      //show original image
+      imshow( "Source", src*255);
+
+      //print original image
+
+      cout << "SOURCE = " << endl << " "  << src << endl << endl;
+
+      rows = src.rows;
+      cols = src.cols;
+
+
+      //Complememt
+      for(int i = 0; i < rows; i++){
+        for(int j = 0; j < cols; j++){
+          src.at<unsigned char>(i,j) =  (src.at<unsigned char>(i,j) - 1)* (-1);
+        }
+      }
+
+      imshow( "Complement", src*255);
+
+      // labelization
+      label_dst = Mat::zeros(rows, cols, CV_8UC1);
+      find_components();
+
+      cout << "LABEL = " << endl << " "  << label_dst << endl << endl;
+
+      imshow( "LABEL", label_dst*50);
+
+      int quattro = 4;
+      if(rows > cols){
+        maxit = rows;
+      }
+      else {
+        maxit = cols;
+      }
+
+      int LABELS[quattro][maxit];
+
+      for(int i = 0; i < 4; i++){
+        for(int j = 0; j < maxit; j++){
+          LABELS[i][j] = 0;
+        }
+      }
+      // check if a track exists
+      for(int j = 0; j < cols; j++){
+        LABELS[0][j] = src.at<unsigned char>(0,j);
+        LABELS[1][j] = src.at<unsigned char>(rows-1,j);
+      }
+
+      for(int j = 1; j < rows-1; j++){
+        LABELS[2][j] = src.at<unsigned char>(j,0);
+        LABELS[3][j] = src.at<unsigned char>(j,cols-1);
+      }
+
+      printf("\n");
+      for(int i = 0; i < 4; i++){
+        for(int j = 0; j < maxit; j++){
+          printf("%d ", LABELS[i][j]);
+        }
+        printf("\n");
+      }
+
+
+      int correctLabel[maxit];
+      for(int i = 0; i < maxit; i++){
+        correctLabel[i] = 0;
+      }
+
+      int count = 0;
+
+      for(int i = 0; i < 4; i++){
+        for(int j = 0; j < maxit; j++){
+          if(LABELS[i][j] != 0) {
+            correctLabel[LABELS[i][j]+1]++;
+          }
+        }
+      }
+
+      int trackToFollow = 0;
+
+      for(int i = 0; i < maxit; i++){
+        if(correctLabel[i] > 1) trackToFollow = i-1;
+      }
+
+      printf("Track to follow: %d\n", trackToFollow);
+
+      //  namedWindow( "DilationOK", WINDOW_AUTOSIZE );
+
+      for(int i = 0; i<rows; i++)
+      for(int j = 0 ; j<cols; j++){
+        if(label_dst.at<unsigned char>(i,j) != trackToFollow)
+        label_dst.at<unsigned char>(i,j)= 0;
+        else {
+          label_dst.at<unsigned char>(i,j)= 1;
+        }
+      }
+
+      namedWindow( "correctTrack", WINDOW_AUTOSIZE );
+      imshow( "correctTrack", src *255);
+
+      cout << "after change bits = " << endl << " "  << label_dst << endl << endl;
+
       /*
-      //construct matrix A random  (simulate maze)
-      for(int i = 0; i < N; i++){
-      for(int j = 0; j < N; j++){
-
-      A[rand()%7][rand()%7] = 1;
-      C[i][j] = false;
-    }
-
-  }
-
-  //simulate maze track
-  for(int j = 0; j < N; j++){
-
-  A[0][j] = 0;
-  A[6][j] = 0;
-  A[j][0] = 0;
-  A[j][6] = 0;
-}
-//A[2][5] = 0;
-A[0][3] = 1;
-A[1][6] = 1;
-
-//Complememt
-for(int i = 0; i < N; i++){
-for(int j = 0; j < N; j++){
-
-//   A[i][j] =  (A[i][j] - 1)* (-1);
-
-}
-}
-
-
-for(int i = 0; i < N; i++){
-for(int j = 0; j < N; j++){
-printf("%d ", A[i][j]);
-}
-printf("\n");
-}
-
-int label = 1;
-
-for(int i = 1; i < N-1; i++){
-for(int j = 1; j < N-1; j++){
-
-if (A[i][j] == 1){
-if(C[i][j]== false) A[i][j] = label;
-if(checkNearByte(label, i, j) == true) label++;
-}
-
-}
-
-}
-
-for(int i = 1; i < 4; i++){
-for(int j = 1; j < N; j++){
-LABELS [i][j]  = 0;
-
-}
-
-}
-
-
-// check if a track exists
-for(int j = 0; j < N; j++){
-LABELS[0][j] = A[0][j];
-LABELS[1][j] = A[N-1][j];
-}
-
-for(int j = 1; j < N-1; j++){
-LABELS[2][j] = A[j][0];
-LABELS[3][j] = A[j][N-1];
-}
-
-printf("\n");
-for(int i = 0; i < 4; i++){
-for(int j = 0; j < N; j++){
-printf("%d ", LABELS[i][j]);
-}
-printf("\n");
-}
-
-
-printMatrix(A);
-
-
-int path = checkSolutionLabel(LABELS);
-printf("Label to follow for solution: %d\n", path);
-
-for(int i = 0; i<N; i++)
-for(int j = 0 ; j<N; j++){
-if(A[i][j] != path)
-A[i][j]= 0;
-else {
-A[i][j]= 1;
-}
-}
-
-printMatrix(A);
-
-
-cv::Mat M(N, N, CV_8UC1);
-
-for(int i = 0; i<N; i++)
-for(int j = 0 ; j<N; j++){
-M.at<unsigned char>(i,j) = A[i][j];
-}
-
-src = M;
-
-//std::memcpy(M.data, A, N*N*sizeof(int));
-//src = M;
-*/
-
-//CommandLineParser parser( argc, argv, "{@input | test.png | input image}" );
-src = imread("test.png", IMREAD_REDUCED_GRAYSCALE_2);
-
-threshold(src, src, 127,1,THRESH_BINARY);
-
-namedWindow( "Erosion Demo", WINDOW_AUTOSIZE );
-namedWindow( "Dilation Demo", WINDOW_AUTOSIZE );
-namedWindow( "Complement", WINDOW_AUTOSIZE );
-
-namedWindow( "Source", WINDOW_AUTOSIZE );
-moveWindow( "LABEL", N, 0 );
-moveWindow( "Source", N, 0 );
-
-//show original image
-imshow( "Source", src*255);
-
-//print original image
-
-cout << "SOURCE = " << endl << " "  << src << endl << endl;
-
-rows = src.rows;
-cols = src.cols;
-//int label = 1;
-
-/*
-//Complememt
-for(int i = 0; i < rows; i++){
-for(int j = 0; j < cols; j++){
-src.at<unsigned char>(i,j) =  (src.at<unsigned char>(i,j) - 1)* (-1);
-}
-}
-
-imshow( "Complement", src*255);
-*/
-// labelization
-label_dst = Mat::zeros(rows, cols, CV_8UC1);
-find_components();
-
-/*
-for(int i = 0; i < rows; i++){
-  for(int j = 0; j < cols; j++){
-    if (src.at<unsigned char>(i,j) == 1){
-      if(!C[i][j]) src.at<unsigned char>(i,j) = label;
-      if(checkNearByte(label, i, j, src) == true) label++;
-    }
-    else {
-      C[i][j] = true;
+      //Complememt
+      // We need the complement because otherwise the dilation is done on 1s, which are our path
+      // all zeros would disappear without complement
+      for(int i = 0; i < rows; i++){
+      for(int j = 0; j < cols; j++){
+      label_dst.at<unsigned char>(i,j) =  (label_dst.at<unsigned char>(i,j) - 1)* (-1);
     }
   }
-}
-*/
+  */
 
-cout << "LABEL = " << endl << " "  << label_dst << endl << endl;
+  Mat element = getStructuringElement( MORPH_RECT, Size(3,3));
+  dilate(label_dst, dilation_dst, element);
 
-imshow( "LABEL", src*50);
+  imshow( "Dilation Demo", dilation_dst *255);
 
-int quattro = 4;
-if(rows > cols){
-  maxit = rows;
-}
-else {
-  maxit = cols;
-}
-
-int LABELS[quattro][maxit];
-
-for(int i = 0; i < 4; i++){
-  for(int j = 0; j < maxit; j++){
-    LABELS[i][j] = 0;
-  }
-}
-// check if a track exists
-for(int j = 0; j < cols; j++){
-  LABELS[0][j] = src.at<unsigned char>(0,j);
-  LABELS[1][j] = src.at<unsigned char>(rows-1,j);
-}
-
-for(int j = 1; j < rows-1; j++){
-  LABELS[2][j] = src.at<unsigned char>(j,0);
-  LABELS[3][j] = src.at<unsigned char>(j,cols-1);
-}
-
-printf("\n");
-for(int i = 0; i < 4; i++){
-  for(int j = 0; j < maxit; j++){
-    printf("%d ", LABELS[i][j]);
-  }
-  printf("\n");
-}
+  cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
 
 
-int correctLabel[maxit];
-for(int i = 0; i < maxit; i++){
-  correctLabel[i] = 0;
-}
+  erode(dilation_dst, erosion_dst, element);
+  cout << "erosion_dst = " << endl << " "  << erosion_dst << endl << endl;
+  imshow( "Erosion Demo", dilation_dst *255);
 
-int count = 0;
+  //NOW THE CORRECT PATH IS GIVEN BY 0s BECAUSE THE DILATION DILATES 1s
+  //SO KEEPING ALL WITHOUT COMPLEMENT WOULD HAVE RESULTED IN A MATRIX FULL OF 1s
+  //IN WHICH SOME WALLS DISAPPEARED.
 
-for(int i = 0; i < 4; i++){
-  for(int j = 0; j < maxit; j++){
-    if(LABELS[i][j] != 0) {
-      correctLabel[LABELS[i][j]+1]++;
-    }
-  }
-}
+  Mat solution = Mat::zeros(rows, cols, CV_8UC1);
+  absdiff(dilation_dst, erosion_dst, solution);
+  cout << "solution = " << endl << " "  << solution << endl << endl;
+  imshow( "Solution Demo", solution *255);
 
-int trackToFollow = 0;
-
-for(int i = 0; i < maxit; i++){
-  if(correctLabel[i] > 1) trackToFollow = i-1;
-}
-
-printf("Track to follow: %d\n", trackToFollow);
-
-//  namedWindow( "DilationOK", WINDOW_AUTOSIZE );
-
-for(int i = 0; i<rows; i++)
-for(int j = 0 ; j<cols; j++){
-  if(label_dst.at<unsigned char>(i,j) != trackToFollow)
-  label_dst.at<unsigned char>(i,j)= 0;
-  else {
-    label_dst.at<unsigned char>(i,j)= 1;
-  }
-}
-
-namedWindow( "correctTrack", WINDOW_AUTOSIZE );
-imshow( "correctTrack", src *255);
-
-cout << "after change bits = " << endl << " "  << label_dst << endl << endl;
-
-
-//Complememt
-// We need the complement because otherwise the dilation is done on 1s, which are our path
-// all zeros would disappear without complement
- for(int i = 0; i < rows; i++){
-   for(int j = 0; j < cols; j++){
-     label_dst.at<unsigned char>(i,j) =  (label_dst.at<unsigned char>(i,j) - 1)* (-1);
-   }
-}
-
-
-Mat element = getStructuringElement( MORPH_RECT, Size(3,3));
-dilate(label_dst, dilation_dst, element);
-
-imshow( "DilationOK", dilation_dst *255);
-
-cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
-
-
-erode(dilation_dst, erosion_dst, element);
-cout << "erosion_dst = " << endl << " "  << erosion_dst << endl << endl;
-
-//NOW THE CORRECT PATH IS GIVEN BY 0s BECAUSE THE DILATION DILATES 1s
-//SO KEEPING ALL WITHOUT COMPLEMENT WOULD HAVE RESULTED IN A MATRIX FULL OF 1s
-//IN WHICH SOME WALLS DISAPPEARED.
-
-//Printing C just to know if all pixels are checked
-/*
-for(int i = 0; i < rows; i++){
-for(int j = 0; j < cols; j++){
-printf("%d ", C[i][j]);
-}
-printf("\n");
-}
-*/
-
-waitKey(0);
-return 0;
-
-/*
-
-cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
-Mat element = getStructuringElement( MORPH_RECT,
-Size(3,3));
-//cv::morphologyEx(dilation_dst, dilation_dst, MORPH_OPEN, element);
-
-//  cout << "dilation_dst opening= " << endl << " "  << dilation_dst << endl << endl;
-
-
-Erosion( 0, 0 );
-
-
-cv::Mat track(N, N, CV_8UC1);
-
-for(int i = 0; i<N; i++)
-for(int j = 0 ; j<N; j++){
-track.at<unsigned char>(i,j) = A[i][j];
-}
-
-
-dilation_dst = dilation_dst - erosion_dst;
-
-
-cout << "maze track= " << endl << " "  << erosion_dst << endl << endl;
-
-waitKey(0);
-
-*/
+  waitKey(0);
+  return 0;
 
 }
