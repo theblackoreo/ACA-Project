@@ -20,8 +20,6 @@ int dilation_size = 0;
 int const max_elem = 2;
 int const max_kernel_size = 21;
 int maxit = 1;
-void Erosion( int, void* );
-void Dilation( int, void* );
 int rows, cols;
 
 
@@ -51,23 +49,6 @@ void find_components() {
     printf("Sono entrato con i=%d e j=%d mentre label=%d\n", i, j, component);
   }
 }
-
-void Erosion( int, void*, Mat src, Mat erosion_dst)
-{
-
-  Mat element = getStructuringElement( MORPH_RECT,
-    Size(3,3));
-    erode( src, erosion_dst, element );
-
-  }
-
-  void Dilation( int, void*,  Mat src, Mat dilation_dst)
-  {
-    Mat element = getStructuringElement( MORPH_RECT,
-      Size(3,3));
-      dilate(src, dilation_dst, element);
-
-    }
 
 
     int main(){
@@ -102,6 +83,7 @@ void Erosion( int, void*, Mat src, Mat erosion_dst)
       }
 
       imshow( "Complement", src*255);
+
 
       // labelization
       label_dst = Mat::zeros(rows, cols, CV_8UC1);
@@ -139,6 +121,7 @@ void Erosion( int, void*, Mat src, Mat erosion_dst)
 
       printf("\n");
       for(int i = 0; i < 4; i++){
+        printf("Riga bordo: ");
         for(int j = 0; j < maxit; j++){
           printf("%d ", LABELS[i][j]);
         }
@@ -167,6 +150,16 @@ void Erosion( int, void*, Mat src, Mat erosion_dst)
         if(correctLabel[i] > 1) trackToFollow = i-1;
       }
 
+      int counter = 0;
+      for (int i = 0; i < quattro; i++) {
+        for(int j = 0; j<maxit; j++) {
+          if(LABELS[i][j] != trackToFollow) counter++;
+        }
+        if(counter)
+        break;
+      }
+
+      printf("Counter: %d\n", counter);
       printf("Track to follow: %d\n", trackToFollow);
 
       //  namedWindow( "DilationOK", WINDOW_AUTOSIZE );
@@ -190,34 +183,35 @@ void Erosion( int, void*, Mat src, Mat erosion_dst)
       // We need the complement because otherwise the dilation is done on 1s, which are our path
       // all zeros would disappear without complement
       for(int i = 0; i < rows; i++){
-      for(int j = 0; j < cols; j++){
-      label_dst.at<unsigned char>(i,j) =  (label_dst.at<unsigned char>(i,j) - 1)* (-1);
+        for(int j = 0; j < cols; j++){
+          label_dst.at<unsigned char>(i,j) =  (label_dst.at<unsigned char>(i,j) - 1)* (-1);
+        }
+      }
+      */
+
+
+      Mat element = getStructuringElement( MORPH_RECT, Size(counter*2, counter*2));
+      dilate(label_dst, dilation_dst, element);
+
+      imshow( "Dilation Demo", dilation_dst *255);
+
+      cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
+
+
+      erode(dilation_dst, erosion_dst, element);
+      cout << "erosion_dst = " << endl << " "  << erosion_dst << endl << endl;
+      imshow( "Erosion Demo", dilation_dst *255);
+
+      //NOW THE CORRECT PATH IS GIVEN BY 0s BECAUSE THE DILATION DILATES 1s
+      //SO KEEPING ALL WITHOUT COMPLEMENT WOULD HAVE RESULTED IN A MATRIX FULL OF 1s
+      //IN WHICH SOME WALLS DISAPPEARED.
+
+      Mat solution = Mat::zeros(rows, cols, CV_8UC1);
+      absdiff(dilation_dst, erosion_dst, solution);
+      cout << "solution = " << endl << " "  << solution << endl << endl;
+      imshow( "Solution Demo", solution *255);
+
+      waitKey(0);
+      return 0;
+
     }
-  }
-  */
-
-  Mat element = getStructuringElement( MORPH_RECT, Size(3,3));
-  dilate(label_dst, dilation_dst, element);
-
-  imshow( "Dilation Demo", dilation_dst *255);
-
-  cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
-
-
-  erode(dilation_dst, erosion_dst, element);
-  cout << "erosion_dst = " << endl << " "  << erosion_dst << endl << endl;
-  imshow( "Erosion Demo", dilation_dst *255);
-
-  //NOW THE CORRECT PATH IS GIVEN BY 0s BECAUSE THE DILATION DILATES 1s
-  //SO KEEPING ALL WITHOUT COMPLEMENT WOULD HAVE RESULTED IN A MATRIX FULL OF 1s
-  //IN WHICH SOME WALLS DISAPPEARED.
-
-  Mat solution = Mat::zeros(rows, cols, CV_8UC1);
-  absdiff(dilation_dst, erosion_dst, solution);
-  cout << "solution = " << endl << " "  << solution << endl << endl;
-  imshow( "Solution Demo", solution *255);
-
-  waitKey(0);
-  return 0;
-
-}
