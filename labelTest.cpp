@@ -11,7 +11,7 @@
 
 using namespace cv;
 using namespace std;
-Mat src, erosion_dst, dilation_dst;
+Mat src, label_dst, erosion_dst, dilation_dst;
 int erosion_elem = 0;
 int erosion_size = 0;
 int dilation_elem = 0;
@@ -81,67 +81,31 @@ return cond;
 
 */
 
-bool checkDown(int label, int r, int c, Mat src) {
-  if( src.at<unsigned char>(r+1,c)==1 && r != rows ){
-    src.at<unsigned char>(r+1,c) = label;
-      C[r+1][c] = true;
-  } else {
-    return true;
-  }
-  return checkDown(label, r+1, c, src);
+// direction vectors
+const int dx[] = {+1, 0, -1, 0};
+const int dy[] = {0, +1, 0, -1};
+
+void checkNearByte(int current_label, int r, int c, Mat src) {
+  if (r < 0 || r == rows) return; // out of bounds
+  if (c < 0 || c == cols) return; // out of bounds
+  if (label_dst.at<unsigned char>(r,c) || !src.at<unsigned char>(r,c)) return; // already labeled or not marked with 1 in m
+
+  // mark the current cell
+  label_dst.at<unsigned char>(r,c) = current_label;
+
+  // recursively mark the neighbors
+  for (int direction = 0; direction < 4; ++direction)
+    checkNearByte(current_label, r + dx[direction], c + dy[direction], src);
 }
 
-bool checkUp(int label, int r, int c, Mat src) {
-  if( src.at<unsigned char>(r-1,c)==1 && r != 0 ){
-    src.at<unsigned char>(r-1,c) = label;
-      C[r-1][c] = true;
-  } else {
-    return true;
-  }
-  return checkUp(label, r-1, c, src);
-}
-
-bool checkRight(int label, int r, int c, Mat src) {
-  if( src.at<unsigned char>(r,c+1)==1 && c != cols ){
-    src.at<unsigned char>(r,c+1) = label;
-      C[r][c+1] = true;
-  } else {
-    return true;
-  }
-  return checkRight(label, r, c+1, src);
-}
-
-bool checkLeft(int label, int r, int c, Mat src) {
-  if( src.at<unsigned char>(r,c-1)==1 && c != 0 ){
-    src.at<unsigned char>(r,c-1) = label;
-      C[r][c-1] = true;
-  } else {
-    return true;
-  }
-  return checkLeft(label, r, c-1, src);
-}
-
-// Second version but very similar to the previous
-bool checkNearByte(int label, int r, int c, Mat src) {
-  if(C[r][c]) {
-    //This pixel has been checked already
-    return true;
-  } else {
-    C[r][c] = true;
-  }
-
-  bool isLabelFinished = false;
-  bool up, down, right, left = false;
-  down = checkDown(label, r, c, src);
-  up = checkUp(label, r, c, src);
-  right = checkRight(label, r, c, src);
-  left = checkLeft(label, r, c, src);
-
-  if(up && down && right && left)
-  isLabelFinished = true;
-
-  return isLabelFinished;
-
+void find_components() {
+  int component = 0;
+  for (int i = 0; i < rows; i++)
+    for (int j = 0; j < cols; j++)
+      if (!label_dst.at<unsigned char>(i,j) && src.at<unsigned char>(i,j)) {
+        checkNearByte(++component, i, j, src);
+        printf("Sono entrato con i=%d e j=%d mentre label=%d\n", i, j, component);
+      }
 }
 
 /*
@@ -379,7 +343,7 @@ cout << "SOURCE = " << endl << " "  << src << endl << endl;
 
 rows = src.rows;
 cols = src.cols;
-int label = 1;
+//int label = 1;
 
 /*
 //Complememt
@@ -392,10 +356,14 @@ src.at<unsigned char>(i,j) =  (src.at<unsigned char>(i,j) - 1)* (-1);
 imshow( "Complement", src*255);
 */
 // labelization
+label_dst = Mat::zeros(rows, cols, CV_8UC1);
+find_components();
+
+/*
 for(int i = 0; i < rows; i++){
   for(int j = 0; j < cols; j++){
     if (src.at<unsigned char>(i,j) == 1){
-      if(C[i][j]== false) src.at<unsigned char>(i,j) = label;
+      if(!C[i][j]) src.at<unsigned char>(i,j) = label;
       if(checkNearByte(label, i, j, src) == true) label++;
     }
     else {
@@ -403,8 +371,9 @@ for(int i = 0; i < rows; i++){
     }
   }
 }
+*/
 
-cout << "LABEL = " << endl << " "  << src << endl << endl;
+cout << "LABEL = " << endl << " "  << label_dst << endl << endl;
 
 imshow( "LABEL", src*50);
 
@@ -470,38 +439,43 @@ printf("Track to follow: %d\n", trackToFollow);
 
 for(int i = 0; i<rows; i++)
 for(int j = 0 ; j<cols; j++){
-  if(src.at<unsigned char>(i,j) != trackToFollow)
-  src.at<unsigned char>(i,j)= 0;
+  if(label_dst.at<unsigned char>(i,j) != trackToFollow)
+  label_dst.at<unsigned char>(i,j)= 0;
   else {
-    src.at<unsigned char>(i,j)= 1;
+    label_dst.at<unsigned char>(i,j)= 1;
   }
 }
 
 namedWindow( "correctTrack", WINDOW_AUTOSIZE );
 imshow( "correctTrack", src *255);
 
-cout << "after change bits = " << endl << " "  << src << endl << endl;
+cout << "after change bits = " << endl << " "  << label_dst << endl << endl;
+
 
 //Complememt
 // We need the complement because otherwise the dilation is done on 1s, which are our path
 // all zeros would disappear without complement
-for(int i = 0; i < rows; i++){
-  for(int j = 0; j < cols; j++){
-    src.at<unsigned char>(i,j) =  (src.at<unsigned char>(i,j) - 1)* (-1);
-  }
+ for(int i = 0; i < rows; i++){
+   for(int j = 0; j < cols; j++){
+     label_dst.at<unsigned char>(i,j) =  (label_dst.at<unsigned char>(i,j) - 1)* (-1);
+   }
 }
 
+
 Mat element = getStructuringElement( MORPH_RECT, Size(3,3));
-dilate(src, dilation_dst, element);
+dilate(label_dst, dilation_dst, element);
 
 imshow( "DilationOK", dilation_dst *255);
 
 cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
 
-/*
+
 erode(dilation_dst, erosion_dst, element);
 cout << "erosion_dst = " << endl << " "  << erosion_dst << endl << endl;
-*/
+
+//NOW THE CORRECT PATH IS GIVEN BY 0s BECAUSE THE DILATION DILATES 1s
+//SO KEEPING ALL WITHOUT COMPLEMENT WOULD HAVE RESULTED IN A MATRIX FULL OF 1s
+//IN WHICH SOME WALLS DISAPPEARED.
 
 //Printing C just to know if all pixels are checked
 /*
