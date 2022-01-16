@@ -13,12 +13,6 @@
 using namespace cv;
 using namespace std;
 Mat src, label_dst, erosion_dst, dilation_dst;
-int erosion_elem = 0;
-int erosion_size = 0;
-int dilation_elem = 0;
-int dilation_size = 0;
-int const max_elem = 2;
-int const max_kernel_size = 21;
 int maxit = 1;
 int rows, cols;
 
@@ -27,6 +21,7 @@ int rows, cols;
 const int dx[] = {+1, 0, -1, 0};
 const int dy[] = {0, +1, 0, -1};
 
+//function to check in all directions (4-conn)
 void checkNearByte(int current_label, int r, int c, Mat src) {
   if (r < 0 || r == rows) return; // out of bounds
   if (c < 0 || c == cols) return; // out of bounds
@@ -40,6 +35,7 @@ void checkNearByte(int current_label, int r, int c, Mat src) {
   checkNearByte(current_label, r + dx[direction], c + dy[direction], src);
 }
 
+//function to identify different regions of the labirinth
 void find_components() {
   int component = 0;
   for (int i = 0; i < rows; i++)
@@ -51,167 +47,148 @@ void find_components() {
 }
 
 
-    int main(){
+int main(int argc, char*argv[]){
+  if(argc != 3) {
+    fprintf(stderr, "Wrong number of parameters: .test <file> <size of path: 1 or 2>\n");
+    exit(-1);
+  }
 
-      //CommandLineParser parser( argc, argv, "{@input | test.png | input image}" );
-      src = imread("test6.png", IMREAD_REDUCED_GRAYSCALE_2);
+  int i, j, element_size, quattro, mode;
+  mode = atoi(argv[2]) + 1 ;
+  quattro = 4;
 
-      threshold(src, src, 127,1,THRESH_BINARY);
+  if(mode<2 || mode>3) {
+    fprintf(stderr, "Wrong mode: 1 or 2\n");
+    exit(-2);
+  }
 
-      // namedWindow( "Erosion Demo", WINDOW_AUTOSIZE );
-      // namedWindow( "Dilation Demo", WINDOW_AUTOSIZE );
-      // namedWindow( "Complement", WINDOW_AUTOSIZE );
-      // namedWindow( "Source", WINDOW_AUTOSIZE );
-      // namedWindow( "Solution Demo", WINDOW_AUTOSIZE );
+  //CommandLineParser parser( argc, argv, "{@input | test.png | input image}" );
+  src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
+  threshold(src, src, 127,1,THRESH_BINARY);
 
-      //show original image
-      imshow( "Source", src*255);
+  //show original image
+  imshow( "Source", src*255);
+  //print original image
+  cout << "SOURCE = " << endl << " "  << src << endl << endl;
 
-      //print original image
+  rows = src.rows;
+  cols = src.cols;
 
-      cout << "SOURCE = " << endl << " "  << src << endl << endl;
-
-      rows = src.rows;
-      cols = src.cols;
-
-
-      //Complememt
-      for(int i = 0; i < rows; i++){
-        for(int j = 0; j < cols; j++){
-          src.at<unsigned char>(i,j) =  (src.at<unsigned char>(i,j) - 1)* (-1);
-        }
-      }
-
-      imshow( "Complement", src*255);
-
-
-      // labelization
-      label_dst = Mat::zeros(rows, cols, CV_8UC1);
-      find_components();
-
-      cout << "LABEL = " << endl << " "  << label_dst << endl << endl;
-
-      imshow( "LABEL", label_dst*50);
-
-      int quattro = 4;
-      if(rows > cols){
-        maxit = rows;
-      }
-      else {
-        maxit = cols;
-      }
-
-      int LABELS[quattro][maxit];
-
-      for(int i = 0; i < 4; i++){
-        for(int j = 0; j < maxit; j++){
-          LABELS[i][j] = 0;
-        }
-      }
-      // check if a track exists
-      for(int j = 0; j < cols; j++){
-        LABELS[0][j] = src.at<unsigned char>(0,j);
-        LABELS[1][j] = src.at<unsigned char>(rows-1,j);
-      }
-
-      for(int j = 1; j < rows-1; j++){
-        LABELS[2][j] = src.at<unsigned char>(j,0);
-        LABELS[3][j] = src.at<unsigned char>(j,cols-1);
-      }
-
-      printf("\n");
-      for(int i = 0; i < 4; i++){
-        printf("Riga bordo: ");
-        for(int j = 0; j < maxit; j++){
-          printf("%d ", LABELS[i][j]);
-        }
-        printf("\n");
-      }
-
-
-      int correctLabel[maxit];
-      for(int i = 0; i < maxit; i++){
-        correctLabel[i] = 0;
-      }
-
-      int count = 0;
-
-      for(int i = 0; i < 4; i++){
-        for(int j = 0; j < maxit; j++){
-          if(LABELS[i][j] != 0) {
-            correctLabel[LABELS[i][j]+1]++;
-          }
-        }
-      }
-
-      int trackToFollow = 0;
-
-      for(int i = 0; i < maxit; i++){
-        if(correctLabel[i] > 1) trackToFollow = i-1;
-      }
-
-      int counter = 0;
-      for (int i = 0; i < quattro; i++) {
-        for(int j = 0; j<maxit; j++) {
-          if(LABELS[i][j] != trackToFollow) counter++;
-        }
-        if(counter)
-        break;
-      }
-
-      printf("Counter: %d\n", counter);
-      printf("Track to follow: %d\n", trackToFollow);
-
-      //  namedWindow( "DilationOK", WINDOW_AUTOSIZE );
-
-      for(int i = 0; i<rows; i++)
-      for(int j = 0 ; j<cols; j++){
-        if(label_dst.at<unsigned char>(i,j) != trackToFollow)
-        label_dst.at<unsigned char>(i,j)= 0;
-        else {
-          label_dst.at<unsigned char>(i,j)= 1;
-        }
-      }
-
-      namedWindow( "correctTrack", WINDOW_AUTOSIZE );
-      imshow( "correctTrack", src *255);
-
-      cout << "after change bits = " << endl << " "  << label_dst << endl << endl;
-
-      /*
-      //Complememt
-      // We need the complement because otherwise the dilation is done on 1s, which are our path
-      // all zeros would disappear without complement
-      for(int i = 0; i < rows; i++){
-        for(int j = 0; j < cols; j++){
-          label_dst.at<unsigned char>(i,j) =  (label_dst.at<unsigned char>(i,j) - 1)* (-1);
-        }
-      }
-      */
-
-
-      Mat element = getStructuringElement( MORPH_RECT, Size(counter*2, counter*2));
-      dilate(label_dst, dilation_dst, element);
-
-      imshow( "Dilation Demo", dilation_dst *255);
-
-      cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
-
-
-      erode(dilation_dst, erosion_dst, element);
-      cout << "erosion_dst = " << endl << " "  << erosion_dst << endl << endl;
-      imshow( "Erosion Demo", dilation_dst *255);
-
-      //NOW THE CORRECT PATH IS GIVEN BY 0s BECAUSE THE DILATION DILATES 1s
-      //SO KEEPING ALL WITHOUT COMPLEMENT WOULD HAVE RESULTED IN A MATRIX FULL OF 1s
-      //IN WHICH SOME WALLS DISAPPEARED.
-
-      Mat solution = Mat::zeros(rows, cols, CV_8UC1);
-      absdiff(dilation_dst, erosion_dst, solution);
-      cout << "solution = " << endl << " "  << solution << endl << endl;
-      imshow( "Solution Demo", solution *255);
-
-      waitKey(0);
-      return 0;
-
+  //Complememt
+  for(i = 0; i < rows; i++){
+    for(j = 0; j < cols; j++){
+      src.at<unsigned char>(i,j) = (src.at<unsigned char>(i,j) - 1) * (-1);
     }
+  }
+  imshow("Complement", src*255);
+
+
+  // labelization
+  label_dst = Mat::zeros(rows, cols, CV_8UC1);
+  find_components();
+  cout << "LABEL = " << endl << " "  << label_dst << endl << endl;
+  imshow( "LABEL", label_dst*50);
+
+  //fixing the dimesions of the matrix equal to the greater dimention between rows and cols
+  maxit = (cols > rows) ? cols : rows;
+
+  //making a matrix with four rows: one for each border of the picture
+  //reporting the value of the pixels of each border
+  int LABELS[quattro][maxit];
+
+  //initialization of the matrix
+  for(i = 0; i < quattro; i++){
+    for(j = 0; j < maxit; j++){
+      LABELS[i][j] = 0;
+    }
+  }
+
+  // check if a track exists
+  for(j = 0; j < cols; j++){
+    LABELS[0][j] = src.at<unsigned char>(0,j);
+    LABELS[1][j] = src.at<unsigned char>(rows-1,j);
+  }
+  for(j = 1; j < rows-1; j++){
+    LABELS[2][j] = src.at<unsigned char>(j,0);
+    LABELS[3][j] = src.at<unsigned char>(j,cols-1);
+  }
+
+  /*
+  Mat B = Mat::zeros(4, maxit, CV_8UC1);
+  label_dst.row(0).copyTo(B.row(0));
+  label_dst.row(rows-1).copyTo(B.row(1));
+  label_dst.col(0).copyTo(B.row(2));
+  label_dst.col(cols-1).copyTo(B.row(3));
+  cout << "B = " << endl << " "  << B << endl << endl;
+  */
+  printf("\n");
+  for(i = 0; i < quattro; i++){
+    printf("Riga bordo: ");
+    for(j = 0; j < maxit; j++){
+      printf("%d ", LABELS[i][j]);
+    }
+    printf("\n");
+  }
+
+  int correctLabel[maxit];
+  for(i = 0; i < maxit; i++){
+    correctLabel[i] = 0;
+  }
+
+  for(i = 0; i < quattro; i++){
+    for(j = 0; j < maxit; j++){
+      if(LABELS[i][j] != 0) {
+        correctLabel[LABELS[i][j]+1]++; //because we started from label 1
+      }
+    }
+  }
+
+  int trackToFollow = 0;
+  for(i = 0; i < maxit; i++){
+    if(correctLabel[i] > 1) trackToFollow = i-1;
+  }
+
+
+  element_size = 0;
+  for (i = 0; i < quattro; i++) {
+    for(j = 0; j<maxit; j++) {
+      if(LABELS[i][j] != trackToFollow) element_size++;
+    }
+    if(element_size)
+    break;
+  }
+  printf("element_size: %d\n", element_size);
+
+
+  printf("Track to follow: %d\n", trackToFollow);
+
+  for(i = 0; i<rows; i++)
+  for(j = 0 ; j<cols; j++){
+    if(label_dst.at<unsigned char>(i,j) != trackToFollow)
+    label_dst.at<unsigned char>(i,j) = 0;
+    else {
+      label_dst.at<unsigned char>(i,j) = 1;
+    }
+  }
+
+  imshow( "correctTrack", src *255);
+  cout << "after change bits = " << endl << " "  << label_dst << endl << endl;
+
+  Mat element = getStructuringElement( MORPH_RECT, Size(element_size*mode, element_size*mode));
+  dilate(label_dst, dilation_dst, element);
+  imshow( "Dilation Demo", dilation_dst *255);
+  cout << "dilation_dst = " << endl << " "  << dilation_dst << endl << endl;
+
+  erode(dilation_dst, erosion_dst, element);
+  cout << "erosion_dst = " << endl << " "  << erosion_dst << endl << endl;
+  imshow( "Erosion Demo", dilation_dst *255);
+
+  Mat solution = Mat::zeros(rows, cols, CV_8UC1);
+  absdiff(dilation_dst, erosion_dst, solution);
+  cout << "solution = " << endl << " "  << solution << endl << endl;
+  imshow( "Solution Demo", solution *255);
+
+  waitKey(0);
+  return 0;
+
+}
