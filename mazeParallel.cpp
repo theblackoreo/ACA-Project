@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <mpi.h>
 #include <iostream>
-#include <stdio.h>
 #include <stdlib.h>
 #include <cmath>
 #include <opencv2/imgproc.hpp>
@@ -14,9 +13,16 @@
 
 using namespace cv;
 using namespace std;
+int rows, cols, size;
+Mat src;
 
 // parallel implementation for thresholding image
-void Bthreshold(int **matrix, int istart, int iend, int jstart, int jend){
+int Bthreshold(int *array){
+
+//  cv::Mat A(1, cols, CV_8UC1, array);
+//  threshold(A, A, 127,1,THRESH_BINARY);
+
+  return 0;
 
 }
 
@@ -37,12 +43,12 @@ int main (int argc, char *argv[]) {
     exit(-2);
   }
 
-  int myrank, size;
-  int N;
+  int myrank;
+  int N = 0;
 
-  src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
-  rows = src.rows;
-  cols = src.cols;
+  //src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
+  //rows = src.rows;
+  //cols = src.cols;
 
   /* 1. Initialize MPI */
   MPI_Init(&argc, &argv);
@@ -53,15 +59,19 @@ int main (int argc, char *argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   if (N % size != 0){
-    if(my_rank == 0) printf("The number %d of elements in the matrix connot be splitted among all");
+    if(myrank == 0) printf("The number of elements in the matrix connot be splitted among all");
     MPI_Finalize();
     return 0;
   }
 
-  int buffer_to_send[rows][cols];
-  int buffer_to_recv[rows/size][cols];
+  //std::array<int,rows> B = (int) src.row(0);
 
 
+  //Bthreshold(src.data.rows(0));
+
+
+  // int buffer_to_send[rows][cols];
+  // int buffer_to_recv[rows/size][cols];
 
 
   /* Terminate MPI */
