@@ -64,6 +64,12 @@ int main (int argc, char *argv[]) {
     return 0;
   }
 
+//copying the Mat element into a int[rows][cols];
+int * mat[rows];
+for (i = 0; i<rows; i++)
+  mat[i] = src.ptr<int>(i);
+
+
   //std::array<int,rows> B = (int) src.row(0);
 
 
