@@ -24,8 +24,14 @@ int Bthreshold(int *array){
   return 0;
 }
 
+int **malloc_2d_int(int rows, int cols) {
+  int *data = (int *) malloc(rows*cols*sizeof(int));
+  int **array = (int**) malloc(rows*sizeof(int));
+  return array;
+}
+
 int main (int argc, char *argv[]) {
-  int myrank, **mat;
+  int myrank, **mat, **buffer_to_recv;
 
   /* 1. Initialize MPI */
   MPI_Init(&argc, &argv);
@@ -36,7 +42,7 @@ int main (int argc, char *argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   //OUR BUFFER TO SEND IS THE MATRIX
-  int buffer_to_recv[rows/size][cols];
+
 
   if(myrank == 0) {
 
@@ -71,18 +77,17 @@ int main (int argc, char *argv[]) {
     }
 
     //copying the Mat element into a int[rows][cols];
-    mat = (int **) malloc(rows*sizeof(int*));
+    mat = malloc_2d_int(rows, cols);
+    buffer_to_recv = malloc_2d_int(rows/size, cols);
     //int * mat[rows];
     for (i = 0; i<rows; i++) {
       mat[i] = src.ptr<int>(i);
     }
 
-
-
   }
 
 
-  MPI_Scatter(mat, rows/size, MPI_INT, buffer_to_recv, rows/size, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Scatter(&(mat[0][0]), (rows/size)*cols, MPI_INT, &(buffer_to_recv[0][0]), (rows/size)*cols, MPI_INT, 0, MPI_COMM_WORLD);
   //Bthreshold(mat[0]);
 
   // int buffer_to_send[rows][cols];
