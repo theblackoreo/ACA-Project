@@ -18,37 +18,14 @@ Mat src;
 
 // parallel implementation for thresholding image
 int Bthreshold(int *array){
-
-//  cv::Mat A(1, cols, CV_8UC1, array);
-//  threshold(A, A, 127,1,THRESH_BINARY);
-
+  cv::Mat A(1, cols, CV_8UC1, array);
+  threshold(A, A, 127,1,THRESH_BINARY);
+  cout << "SOURCE = " << endl << " "  << A << endl << endl;
   return 0;
-
 }
 
 int main (int argc, char *argv[]) {
-
-
-  if(argc != 3) {
-    fprintf(stderr, "Wrong number of parameters: ./program <file> <size of path: 1 or 2> \n");
-    exit(-1);
-  }
-
-  int i, j, element_size, quattro, mode;
-  mode = atoi(argv[2]) + 1 ;
-  quattro = 4;
-
-  if(mode<2 || mode>3) {
-    fprintf(stderr, "Wrong mode: 1 or 2\n");
-    exit(-2);
-  }
-
-  int myrank;
-  int N = 0;
-
-  //src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
-  //rows = src.rows;
-  //cols = src.cols;
+  int myrank, **mat;
 
   /* 1. Initialize MPI */
   MPI_Init(&argc, &argv);
@@ -58,27 +35,58 @@ int main (int argc, char *argv[]) {
   /* 3. Get the total number of processes */
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  if (N % size != 0){
-    if(myrank == 0) printf("The number of elements in the matrix connot be splitted among all");
-    MPI_Finalize();
-    return 0;
+  //OUR BUFFER TO SEND IS THE MATRIX
+  int buffer_to_recv[rows/size][cols];
+
+  if(myrank == 0) {
+
+    if(argc != 3) {
+      fprintf(stderr, "Wrong number of parameters: ./program <file> <size of path: 1 or 2> \n");
+      exit(-1);
+    }
+
+    int i, j, element_size, quattro, mode;
+    mode = atoi(argv[2]) + 1 ;
+    quattro = 4;
+
+    if(mode<2 || mode>3) {
+      fprintf(stderr, "Wrong mode: 1 or 2\n");
+      exit(-2);
+    }
+
+    src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
+    rows = src.rows;
+    cols = src.cols;
+
+    cv::resize(src, src, cv::Size(rows-(rows%size), cols));
+    rows -= (rows%size);
+    // cout << "Resized = " << endl << " "  << src << endl << endl;
+    // imshow("Immagine ridotta",src);
+    // waitKey(0);
+
+    if (rows % size != 0){
+      if(myrank == 0) printf("The number of elements in the matrix connot be splitted among all");
+      MPI_Finalize();
+      return 0;
+    }
+
+    //copying the Mat element into a int[rows][cols];
+    mat = (int **) malloc(rows*sizeof(int*));
+    //int * mat[rows];
+    for (i = 0; i<rows; i++) {
+      mat[i] = src.ptr<int>(i);
+    }
+
+
+
   }
 
-//copying the Mat element into a int[rows][cols];
-int * mat[rows];
-for (i = 0; i<rows; i++)
-  mat[i] = src.ptr<int>(i);
 
-
-  //std::array<int,rows> B = (int) src.row(0);
-
-
-  //Bthreshold(src.data.rows(0));
-
+  MPI_Scatter(mat, rows/size, MPI_INT, buffer_to_recv, rows/size, MPI_INT, 0, MPI_COMM_WORLD);
+  //Bthreshold(mat[0]);
 
   // int buffer_to_send[rows][cols];
   // int buffer_to_recv[rows/size][cols];
-
 
   /* Terminate MPI */
   MPI_Finalize();
