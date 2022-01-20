@@ -1,14 +1,12 @@
-#include <cstdlib>
+#include <stdio.h>
+#include <mpi.h>
 #include <iostream>
-#include <iomanip>
-#include <ctime>
-#include <iostream>
-#include <string>
-#include <chrono>
-#include <thread>
+#include <stdlib.h>
+#include <cmath>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+#include "opencv2/imgcodecs/imgcodecs.hpp"
 #include <opencv2/opencv.hpp>
-#include "opencv2/highgui/highgui.hpp"
-#include "mpi.h"
 
 using namespace std;
 using namespace cv;
@@ -69,7 +67,7 @@ int main(int argc, char* argv[])
       rows = src.rows;
       cols = src.cols;
 
-      cv::resize(src, src, cv::Size(rows-(rows%size), cols));
+      resize(src, src, Size(rows-(rows%size), cols));
       rows = rows - (rows%size);
 
       matscatter(src);
