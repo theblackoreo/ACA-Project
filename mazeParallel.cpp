@@ -24,12 +24,6 @@ int Bthreshold(int *array){
   return 0;
 }
 
-int **malloc_2d_int(int rows, int cols) {
-  int *data = (int *) malloc(rows*cols*sizeof(int));
-  int **array = (int**) malloc(rows*sizeof(int));
-  return array;
-}
-
 int main (int argc, char *argv[]) {
   int myrank, **mat, **buffer_to_recv;
 
@@ -45,7 +39,6 @@ int main (int argc, char *argv[]) {
 
 
   if(myrank == 0) {
-
     if(argc != 3) {
       fprintf(stderr, "Wrong number of parameters: ./program <file> <size of path: 1 or 2> \n");
       exit(-1);
@@ -73,25 +66,23 @@ int main (int argc, char *argv[]) {
     if (rows % size != 0){
       if(myrank == 0) printf("The number of elements in the matrix connot be splitted among all");
       MPI_Finalize();
+      printf("Resize failed\n");
       return 0;
     }
 
-    //copying the Mat element into a int[rows][cols];
-    mat = malloc_2d_int(rows, cols);
-    buffer_to_recv = malloc_2d_int(rows/size, cols);
-    //int * mat[rows];
+    mat = (int **) malloc(rows*cols*sizeof(int));
     for (i = 0; i<rows; i++) {
       mat[i] = src.ptr<int>(i);
     }
 
+    for(int i = 0; i<rows; i++) {
+      for (int j = 0; j<cols; j++) {
+        printf("%d ", mat[i][j]);
+      }
+      printf("\n");
+    }
+
   }
-
-
-  MPI_Scatter(&(mat[0][0]), (rows/size)*cols, MPI_INT, &(buffer_to_recv[0][0]), (rows/size)*cols, MPI_INT, 0, MPI_COMM_WORLD);
-  //Bthreshold(mat[0]);
-
-  // int buffer_to_send[rows][cols];
-  // int buffer_to_recv[rows/size][cols];
 
   /* Terminate MPI */
   MPI_Finalize();
