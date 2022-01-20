@@ -25,7 +25,7 @@ int Bthreshold(int *array){
 }
 
 int main (int argc, char *argv[]) {
-  int myrank, **mat, **buffer_to_recv;
+  int myrank, **buffer_to_send, **buffer_to_recv;
 
   /* 1. Initialize MPI */
   MPI_Init(&argc, &argv);
@@ -58,7 +58,7 @@ int main (int argc, char *argv[]) {
     cols = src.cols;
 
     cv::resize(src, src, cv::Size(rows-(rows%size), cols));
-    rows -= (rows%size);
+    rows = rows - (rows%size);
     // cout << "Resized = " << endl << " "  << src << endl << endl;
     // imshow("Immagine ridotta",src);
     // waitKey(0);
@@ -70,18 +70,36 @@ int main (int argc, char *argv[]) {
       return 0;
     }
 
-    mat = (int **) malloc(rows*cols*sizeof(int));
+    // mat = (int **) malloc(rows*sizeof(int*));
+    // for (i = 0; i<rows; i++) {
+    //   mat[i] = (int *) malloc(cols*sizeof(int));
+    //   for (j = 0; j<cols; j++)
+    //     mat[i][j] = src.at<unsigned int>(i,j);
+    // }
+
+    int mat[rows][cols];
     for (i = 0; i<rows; i++) {
-      mat[i] = src.ptr<int>(i);
-    }
-
-    for(int i = 0; i<rows; i++) {
-      for (int j = 0; j<cols; j++) {
-        printf("%d ", mat[i][j]);
+      for (j = 0; j<cols; j++)
+        mat[i][j] = src.at<unsigned char>(i,j);
       }
-      printf("\n");
-    }
 
+      int (*ptr)[rows][cols];
+      ptr = &mat[0][0];
+      //*buffer_to_send = &mat;
+      // for (i = 0; i<rows; i++) {
+      //   for (j = 0; j<cols; j++)
+      //   printf("%d ", mat[i][j]);
+      //   printf("\n");
+      // }
+
+      cout << (*ptr)[0][0];
+
+  }
+
+  for (int i = 0; i<rows; i++) {
+    for (int j = 0; j<cols; j++)
+      printf("%d ", buffer_to_send[i][j]);
+    printf("\n");
   }
 
   /* Terminate MPI */
