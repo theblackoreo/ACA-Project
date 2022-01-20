@@ -14,6 +14,7 @@
 using namespace cv;
 using namespace std;
 int rows, cols, size;
+std::vector<int> v;
 Mat src;
 
 // parallel implementation for thresholding image
@@ -26,6 +27,7 @@ int Bthreshold(int *array){
 
 int main (int argc, char *argv[]) {
   int myrank, **buffer_to_send, **buffer_to_recv;
+
 
   /* 1. Initialize MPI */
   MPI_Init(&argc, &argv);
@@ -83,8 +85,11 @@ int main (int argc, char *argv[]) {
         mat[i][j] = src.at<unsigned char>(i,j);
       }
 
-      int (*ptr)[rows][cols];
-      ptr = &mat[0][0];
+    v.push_back(1);
+    v.push_back(244);
+
+      // int (*ptr)[rows][cols];
+      // ptr = &mat[0][0];
       //*buffer_to_send = &mat;
       // for (i = 0; i<rows; i++) {
       //   for (j = 0; j<cols; j++)
@@ -92,15 +97,17 @@ int main (int argc, char *argv[]) {
       //   printf("\n");
       // }
 
-      cout << (*ptr)[0][0];
+      // cout << (*ptr)[0][0];
 
   }
 
-  for (int i = 0; i<rows; i++) {
-    for (int j = 0; j<cols; j++)
-      printf("%d ", buffer_to_send[i][j]);
-    printf("\n");
-  }
+  // for (int i = 0; i<rows; i++) {
+  //   for (int j = 0; j<cols; j++)
+  //     printf("%d ", buffer_to_send[i][j]);
+  //   printf("\n");
+  // }
+
+  std::cout << v.at(1);
 
   /* Terminate MPI */
   MPI_Finalize();
