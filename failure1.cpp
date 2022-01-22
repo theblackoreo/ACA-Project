@@ -18,30 +18,28 @@ int my_rank, size, rows, cols;
 Mat src;
 
 void matscatter(Mat& m, int my_rank){
-  if(my_rank == 0) {
-    int rows  = m.rows;
-    int cols  = m.cols;
-    int type  = m.type();
-    int channels = m.channels();
-    memcpy(&buffer[0 * sizeof(int)],(uchar*)&rows,sizeof(int));
-    memcpy(&buffer[1 * sizeof(int)],(uchar*)&cols,sizeof(int));
-    memcpy(&buffer[2 * sizeof(int)],(uchar*)&type,sizeof(int));
+  int rows  = m.rows;
+  int cols  = m.cols;
+  int type  = m.type();
+  int channels = m.channels();
+  memcpy(&buffer[0 * sizeof(int)],(uchar*)&rows,sizeof(int));
+  memcpy(&buffer[1 * sizeof(int)],(uchar*)&cols,sizeof(int));
+  memcpy(&buffer[2 * sizeof(int)],(uchar*)&type,sizeof(int));
 
-    // See note at end of answer about "bytes" variable below!!!
-    int bytespersample=1; // change if using shorts or floats
-    int bytes=m.rows*m.cols*channels*bytespersample;
-    cout << "matsnd: rows=" << rows << endl;
-    cout << "matsnd: cols=" << cols << endl;
-    cout << "matsnd: type=" << type << endl;
-    cout << "matsnd: channels=" << channels << endl;
-    cout << "matsnd: bytes=" << bytes << endl;
+  // See note at end of answer about "bytes" variable below!!!
+  int bytespersample=1; // change if using shorts or floats
+  int bytes=m.rows*m.cols*channels*bytespersample;
+  cout << "matsnd: rows=" << rows << endl;
+  cout << "matsnd: cols=" << cols << endl;
+  cout << "matsnd: type=" << type << endl;
+  cout << "matsnd: channels=" << channels << endl;
+  cout << "matsnd: bytes=" << bytes << endl;
 
-    if(!m.isContinuous())
-    {
-      m = m.clone();
-    }
-    memcpy(&buffer[3*sizeof(int)],m.data,bytes);
+  if(!m.isContinuous())
+  {
+    m = m.clone();
   }
+  memcpy(&buffer[3*sizeof(int)],m.data,bytes);
   MPI_Scatter(&buffer, bytes+3*sizeof(int)/size, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes+3*sizeof(int)/size, MPI_UNSIGNED_CHAR, 0,MPI_COMM_WORLD);
 }
 
