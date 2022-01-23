@@ -14,50 +14,73 @@ using namespace cv;
 const int MAXBYTES=8*1024*1024;
 uchar buffer[MAXBYTES];
 int my_rank, size, rows, cols;
-Mat src, toSend;
+Mat src, toSend, label_dst, rcv;
 int *byte;
 
+// direction vectors
+const int dx[] = {+1, 0, -1, 0};
+const int dy[] = {0, +1, 0, -1};
+
+void checkNearByte(int current_label, int r, int c, Mat src) {
+  rows = rcv.rows;
+  cols = rcv.cols;
+  if (r < 0 || r == rows) return; // out of bounds
+  if (c < 0 || c == cols) return; // out of bounds
+  if (label_dst.at<unsigned char>(r,c) || !rcv.at<unsigned char>(r,c)) return; // already labeled or not marked with 1 in src
+
+  // mark the current cell
+  label_dst.at<unsigned char>(r,c) = current_label;
+
+  // recursively mark the neighbors
+  for (int direction = 0; direction < 4; ++direction)
+  checkNearByte(current_label, r + dx[direction], c + dy[direction], rcv);
+}
+
+//function to identify different regions of the labirinth
+void find_components() {
+  int component = 0;
+  for (int i = 0; i < rcv.rows; i++)
+  for (int j = 0; j < rcv.cols; j++)
+  if (!label_dst.at<unsigned char>(i,j) && rcv.at<unsigned char>(i,j)) {
+    checkNearByte(++component, i, j, rcv);
+    printf("Sono entrato con i=%d e j=%d mentre label=%d\n", i, j, component);
+  }
+}
+
 void matscatter(Mat& m, int dest){
-  if(my_rank == 0) {
+  MPI_Request req;
+  int rows  = m.rows;
+  int cols  = m.cols;
+  int type  = m.type();
+  int channels = m.channels();
+  memcpy(&buffer[0 * sizeof(int)],(uchar*)&rows,sizeof(int));
+  memcpy(&buffer[1 * sizeof(int)],(uchar*)&cols,sizeof(int));
+  memcpy(&buffer[2 * sizeof(int)],(uchar*)&type,sizeof(int));
 
-      int rows  = m.rows;
-      int cols  = m.cols;
-      int type  = m.type();
-      int channels = m.channels();
-      memcpy(&buffer[0 * sizeof(int)],(uchar*)&rows,sizeof(int));
-      memcpy(&buffer[1 * sizeof(int)],(uchar*)&cols,sizeof(int));
-      memcpy(&buffer[2 * sizeof(int)],(uchar*)&type,sizeof(int));
+  // See note at end of answer about "bytes" variable below!!!
+  int bytespersample=1; // change if using shorts or floats
+  int bytes=m.rows*m.cols*channels*bytespersample;
+  cout << "matsnd: rows=" << rows << endl;
+  cout << "matsnd: cols=" << cols << endl;
+  cout << "matsnd: type=" << type << endl;
+  cout << "matsnd: channels=" << channels << endl;
+  cout << "matsnd: bytes=" << bytes << endl;
+  cout << "nProc: size=" << size << endl;
+  cout << "sender: sender=" << my_rank << endl;
+  if(!m.isContinuous())
+  {
+    m = m.clone();
+  }
+  memcpy(&buffer[3*sizeof(int)],m.data,bytes);
 
-      // See note at end of answer about "bytes" variable below!!!
-      int bytespersample=1; // change if using shorts or floats
-      int bytes=m.rows*m.cols*channels*bytespersample;
-      cout << "matsnd: rows=" << rows << endl;
-      cout << "matsnd: cols=" << cols << endl;
-      cout << "matsnd: type=" << type << endl;
-      cout << "matsnd: channels=" << channels << endl;
-      cout << "matsnd: bytes=" << bytes << endl;
-      cout << "nProc: size=" << size << endl;
-      cout << "sender: sender=" << my_rank << endl;
-      if(!m.isContinuous())
-      {
-        m = m.clone();
-      }
-      memcpy(&buffer[3*sizeof(int)],m.data,bytes);
-
-      MPI_Send(&buffer,bytes+3*sizeof(int),MPI_UNSIGNED_CHAR,dest,0,MPI_COMM_WORLD);
-
-
-    }
-
-    //MPI_Scatter(&buffer, bytes+3*sizeof(int)/size, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes+3*sizeof(int)/size, MPI_UNSIGNED_CHAR, 0,MPI_COMM_WORLD);
-
+  MPI_Isend(&buffer,bytes+3*sizeof(int),MPI_UNSIGNED_CHAR,dest,my_rank,MPI_COMM_WORLD, &req);
 
 }
 
-Mat reconstruct(){
+Mat reconstruct(int source){
   MPI_Status status;
   int count,rows,cols,type,channels;
-  MPI_Recv(&buffer,sizeof(buffer),MPI_UNSIGNED_CHAR,0,0,MPI_COMM_WORLD,&status);
+  MPI_Recv(&buffer,sizeof(buffer),MPI_UNSIGNED_CHAR,source,0,MPI_COMM_WORLD,&status);
 
   memcpy((uchar*)&rows,&buffer[0 * sizeof(int)], sizeof(int));
   memcpy((uchar*)&cols,&buffer[1 * sizeof(int)], sizeof(int));
@@ -75,6 +98,7 @@ Mat reconstruct(){
 
 int main(int argc, char* argv[])
 {
+  Mat my_submatrix;
   MPI_Init(&argc, &argv);
 
   // Get my rank
@@ -98,17 +122,48 @@ int main(int argc, char* argv[])
     rows = src.rows;
     cols = src.cols;
 
+    printf("Original matrix -> rows:%d, cols:%d\n", src.rows, src.cols);
     resize(src, src, Size(rows-(rows%size), cols));
+    printf("Resized matrix -> rows:%d, cols:%d\n", src.rows, src.cols);
     rows = rows - (rows%size);
-    Mat a;
+
     for(int i = 1; i < size; i++){
-        a = src.rowRange(((i-1)*(rows/size)), ((i-1)*(rows/size)+(rows/size)));
-        matscatter(a, i);
-      }
+      my_submatrix = src.rowRange(i*(rows/size), i*(rows/size)+(rows/size));
+      matscatter(my_submatrix, i);
+    }
+    printf("Helloooooo");
+    my_submatrix = src.rowRange(0, (rows/size));
+    src = my_submatrix;
+    for(int i = 1; i < size; i++){
 
+      Mat returned = reconstruct(i);
+      vconcat(src, returned, src);
+    }
+    cout << "reassembled = " << endl << " "  << src << endl << endl;
   }
+  Mat rcv = (my_rank) ? reconstruct(0) : my_submatrix;
+  printf("Received matrix -> rows:%d, cols:%d\n", rcv.rows, rcv.cols);
+  threshold(rcv, rcv, 127,1,THRESH_BINARY);
+  imshow("Lab", rcv*255);
+  //cout << "rcv = " << endl << " "  << rcv << endl << endl;
 
-  Mat a = reconstruct();
+  for(int i = 0; i < rcv.rows; i++){
+    for(int j = 0; j < rcv.cols; j++){
+      rcv.at<unsigned char>(i,j) = (rcv.at<unsigned char>(i,j) - 1) * (-1);
+    }
+  }
+  imshow("Complement", rcv*255);
+
+  // labelization
+  label_dst = Mat::zeros(rcv.rows, rcv.cols, CV_8UC1);
+  find_components();
+  //  cout << "LABEL = " << endl << " "  << label_dst << endl << endl;
+  imshow( "LABEL", rcv*50);
+  //  waitKey(0);
+
+  printf("Before\n");
+  matscatter(rcv, 0);
+  printf("After\n");
 
   /* Terminate MPI */
   MPI_Finalize();
