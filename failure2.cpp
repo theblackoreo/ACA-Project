@@ -58,13 +58,12 @@ Mat reconstruct(){
   MPI_Status status;
   int count,rows,cols,type,channels;
   MPI_Recv(&buffer,sizeof(buffer),MPI_UNSIGNED_CHAR,0,0,MPI_COMM_WORLD,&status);
-  MPI_Get_count(&status,MPI_UNSIGNED_CHAR,&count);
 
   memcpy((uchar*)&rows,&buffer[0 * sizeof(int)], sizeof(int));
   memcpy((uchar*)&cols,&buffer[1 * sizeof(int)], sizeof(int));
   memcpy((uchar*)&type,&buffer[2 * sizeof(int)], sizeof(int));
 
-  cout << "matrcv: Count=" << count << endl;
+  cout << "matrcv: Process=" << my_rank << endl;
   cout << "matrcv: rows=" << rows << endl;
   cout << "matrcv: cols=" << cols << endl;
   cout << "matrcv: type=" << type << endl;
@@ -101,16 +100,13 @@ int main(int argc, char* argv[])
 
     resize(src, src, Size(rows-(rows%size), cols));
     rows = rows - (rows%size);
-
-
+    Mat a;
     for(int i = 1; i < size; i++){
-
-        matscatter((src.rowRange(((i-1)*(rows/size)), ((i-1)*(rows/size)+(rows/size)))), i);
+        a = src.rowRange(((i-1)*(rows/size)), ((i-1)*(rows/size)+(rows/size)));
+        matscatter(a, i);
       }
 
   }
-
-
 
   Mat a = reconstruct();
 
