@@ -16,6 +16,7 @@ uchar buffer[MAXBYTES];
 int my_rank, size, rows, cols;
 Mat src, toSend, label_dst, rcv;
 int *byte;
+MPI_Request request = MPI_REQUEST_NULL;
 
 // direction vectors
 const int dx[] = {+1, 0, -1, 0};
@@ -73,14 +74,14 @@ void matscatter(Mat& m, int dest){
   }
   memcpy(&buffer[3*sizeof(int)],m.data,bytes);
 
-  MPI_Isend(&buffer,bytes+3*sizeof(int),MPI_UNSIGNED_CHAR,dest,my_rank,MPI_COMM_WORLD, &req);
+  MPI_Send(&buffer,bytes+3*sizeof(int),MPI_UNSIGNED_CHAR,dest,555, MPI_COMM_WORLD);
 
 }
 
 Mat reconstruct(int source){
   MPI_Status status;
   int count,rows,cols,type,channels;
-  MPI_Recv(&buffer,sizeof(buffer),MPI_UNSIGNED_CHAR,source,0,MPI_COMM_WORLD,&status);
+  MPI_Recv(&buffer,sizeof(buffer),MPI_UNSIGNED_CHAR,source,555,MPI_COMM_WORLD,&status);
 
   memcpy((uchar*)&rows,&buffer[0 * sizeof(int)], sizeof(int));
   memcpy((uchar*)&cols,&buffer[1 * sizeof(int)], sizeof(int));
@@ -131,19 +132,24 @@ int main(int argc, char* argv[])
       my_submatrix = src.rowRange(i*(rows/size), i*(rows/size)+(rows/size));
       matscatter(my_submatrix, i);
     }
-    printf("Helloooooo");
+
     my_submatrix = src.rowRange(0, (rows/size));
     src = my_submatrix;
     for(int i = 1; i < size; i++){
-
       Mat returned = reconstruct(i);
       vconcat(src, returned, src);
     }
-    cout << "reassembled = " << endl << " "  << src << endl << endl;
+
+    //cout << "reassembled = " << endl << " "  << src << endl << endl;
+    MPI_Finalize();
+
   }
+
   Mat rcv = (my_rank) ? reconstruct(0) : my_submatrix;
   printf("Received matrix -> rows:%d, cols:%d\n", rcv.rows, rcv.cols);
+
   threshold(rcv, rcv, 127,1,THRESH_BINARY);
+  printf("Process %d: \n", my_rank);
   imshow("Lab", rcv*255);
   //cout << "rcv = " << endl << " "  << rcv << endl << endl;
 
@@ -152,6 +158,7 @@ int main(int argc, char* argv[])
       rcv.at<unsigned char>(i,j) = (rcv.at<unsigned char>(i,j) - 1) * (-1);
     }
   }
+
   imshow("Complement", rcv*255);
 
   // labelization

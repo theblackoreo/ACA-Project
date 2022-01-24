@@ -14,48 +14,73 @@ using namespace cv;
 const int MAXBYTES=8*1024*1024;
 uchar buffer[MAXBYTES];
 uchar buffer_to_recv[MAXBYTES];
-int my_rank, size, rows, cols;
+int my_rank, size, rows, cols, bytes;
 Mat src;
+int dims[2];
 
 void matscatter(Mat& m, int my_rank){
-  int rows  = m.rows;
-  int cols  = m.cols;
-  int type  = m.type();
-  int channels = m.channels();
-  memcpy(&buffer[0 * sizeof(int)],(uchar*)&rows,sizeof(int));
-  memcpy(&buffer[1 * sizeof(int)],(uchar*)&cols,sizeof(int));
-  memcpy(&buffer[2 * sizeof(int)],(uchar*)&type,sizeof(int));
 
-  // See note at end of answer about "bytes" variable below!!!
+if(my_rank == 0){
+
+  cols = m.cols;
+
   int bytespersample=1; // change if using shorts or floats
-  int bytes=m.rows*m.cols*channels*bytespersample;
-  cout << "matsnd: rows=" << rows << endl;
-  cout << "matsnd: cols=" << cols << endl;
-  cout << "matsnd: type=" << type << endl;
-  cout << "matsnd: channels=" << channels << endl;
-  cout << "matsnd: bytes=" << bytes << endl;
+  bytes=m.rows*m.cols*bytespersample;
 
+  cout << "matsnd: bytes=" << bytes << endl;
+  cout << endl << m << endl << endl;
   if(!m.isContinuous())
   {
     m = m.clone();
   }
-  memcpy(&buffer[3*sizeof(int)],m.data,bytes);
-  MPI_Scatter(&buffer, bytes+3*sizeof(int)/size, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes+3*sizeof(int)/size, MPI_UNSIGNED_CHAR, 0,MPI_COMM_WORLD);
+
+  memcpy(&buffer[0*sizeof(int)],m.data,bytes);
+
+  printf("to send: ");
+  for (int i = 0; i < bytes; i++){
+    printf("%hhu ", buffer[i]);
+  }
+
+  dims[0] = rows/size;
+  dims[1] = cols;
+  //bytes = bytes/size;
+
+  for(int i = 1; i < size; i++){
+    MPI_Send(&dims,2*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
+  }
+
+}
+  else {
+  MPI_Status status;
+  MPI_Recv(&dims,2*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
+
+  printf("RICEVUTO %d\n", dims[0]*dims[1]);
+
+  }
+
+  bytes = dims[0]*dims[1];
+  rows = dims[0];
+  cols = dims[1];
+
+
+  MPI_Scatter(&buffer, bytes, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
+
+  Mat a = Mat(rows,cols,0,buffer_to_recv);
+
+  cout << endl << a << endl << endl;
+  /*
+  for (int i = 0; i < bytes; i++){
+    printf("process: %d, element n. %d ---> %hhu\n", my_rank, i, buffer_to_recv[i]);
+  }
+  */
+
 }
 
 Mat reconstruct(){
-  int count,rows,cols,type,channels;
-  memcpy((uchar*)&rows,&buffer[0 * sizeof(int)], sizeof(int));
-  memcpy((uchar*)&cols,&buffer[1 * sizeof(int)], sizeof(int));
-  memcpy((uchar*)&type,&buffer[2 * sizeof(int)], sizeof(int));
-
-  cout << "matrcv: Count=" << count << endl;
-  cout << "matrcv: rows=" << rows << endl;
-  cout << "matrcv: cols=" << cols << endl;
-  cout << "matrcv: type=" << type << endl;
-
   // Make the mat
-  Mat received= Mat(rows,cols,type,(uchar*)&buffer[3*sizeof(int)]);
+  Mat received= Mat(1,0,0,(uchar*)&buffer[0*sizeof(int)]);
+
   return received;
 }
 
@@ -86,9 +111,14 @@ int main(int argc, char* argv[])
 
     resize(src, src, Size(rows-(rows%size), cols));
     rows = rows - (rows%size);
+
+
+
   }
+
   matscatter(src, my_rank);
-  Mat m = reconstruct();
+
+//  Mat m = reconstruct();
 
 
   /* Terminate MPI */
