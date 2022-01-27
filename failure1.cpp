@@ -109,6 +109,59 @@ void matscatter(Mat& m, int my_rank){
 
 }
 
+void second_matscatter(Mat& m, int my_rank){
+  if(my_rank == 0){
+    cols = m.cols;
+    rows = m.rows;
+    bytes=m.rows*m.cols;
+
+    // cout << "matsnd: bytes=" << bytes << endl;
+    // cout << endl << m << endl << endl;
+    std::cout << "SECOND MATSCATTER REACHED" << '\n';
+    if(!m.isContinuous())
+    {
+      m = m.clone();
+    }
+    for (size_t i = 0; i < size; i++) {
+      int to_copy = (bytes/size)+cols;
+      memcpy(&buffer[(i*bytes/size)+i*cols],&m.data[(i*bytes/size)], to_copy);
+    }
+
+    dims[0] = ((rows+size)/size);
+    dims[1] = cols;
+
+
+    for(int i = 1; i < size; i++){
+      MPI_Send(&dims,2*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
+      /*
+      memcpy(&buffer_to_send[0*sizeof(int)],m.data+160*161/size, 160*161/size);
+      Mat mat_to_snd = Mat(rows+size, cols,0,buffer);
+      imshow("mat to send", mat_to_snd*50);
+      waitKey(0);
+      */
+    }
+
+  }
+  else {
+    MPI_Status status;
+    MPI_Recv(&dims,2*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
+    printf("RICEVUTO %d\n", dims[0]*dims[1]);
+
+  }
+
+  bytes = dims[0]*dims[1];
+  rows = dims[0];
+  cols = dims[1];
+  //
+  MPI_Scatter(&buffer, bytes, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
+
+  // for (int i = 0; i < bytes; i++){
+  // printf("process: %d, element n. %d ---> %hhu\n", my_rank, i, buffer_to_recv[i]);
+  // }
+
+}
+
 void matgather(Mat& m) {
   memcpy(&buffer_to_recv[0*sizeof(int)],m.data,bytes);
   MPI_Gather(&buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, buffer, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
@@ -121,6 +174,8 @@ void matgather(Mat& m) {
 
 int main(int argc, char* argv[])
 {
+  Mat label_dst;
+
   MPI_Init(&argc, &argv);
 
   // Get my rank
@@ -178,23 +233,50 @@ int main(int argc, char* argv[])
   // waitKey(0);
 
   if(my_rank == 0) {
-    Mat label_dst = Mat::zeros(received.rows, received.cols, CV_8UC1);
+    label_dst = Mat::zeros(received.rows, received.cols, CV_8UC1);
     label_dst = find_components(received, label_dst);
     imshow("Components", label_dst*50);
     waitKey(0);
 
-    // uchar up[MAXBYTES];
-    // memcpy(&up[], label_dst.rowRange(0, 0).data, label_dst.cols);
-    // std::vector<uchar>down;
-    // memcpy(&down, label_dst.rowRange(label_dst.rows-1, label_dst.rows-1).data, label_dst.cols);
-    // std::vector<uchar> right;
-    // memcpy(&right, label_dst.colRange(label_dst.cols-1, label_dst.cols-1).data, label_dst.rows);
-    // std::vector<uchar> left;
-    // memcpy(&left, label_dst.colRange(0, 0).data, label_dst.rows);
 
+    // std::vector<int> up;
+    // label_dst.row(0).copyTo(up);
+    // std::sort(up.begin(), up.end());
+    // // for (int el: up)
+    // // std::cout << "(" << el << ") ";
+    // // printf("\n\n");
+    //
+    // std::vector<int> down;
+    // label_dst.row(label_dst.rows-1).copyTo(down);
+    // std::sort(down.begin(), down.end());
+    // // for (int el: down)
+    // // std::cout << "(" << el << ") ";
+    // // printf("\n\n");
+    //
+    // std::vector<int> left;
+    // label_dst.col(0).copyTo(left);
+    // std::sort(left.begin(), left.end());
+    // // for (int el: left)
+    // // std::cout << "(" << el << ") ";
+    // // printf("\n\n");
+    //
+    // std::vector<int> right;
+    // label_dst.col(label_dst.cols-1).copyTo(right);
+    // std::sort(right.begin(), right.end());
+    // // for (int el: right)
+    // // std::cout << "(" << el << ") ";
+    // // printf("\n\n");
+    //
+    // for (size_t i = 0; i < 2; i++) {
+    //   if(up.at(i) == 0)
+    // }
 
+  } //close of the if for father process
 
-  }
+  second_matscatter(label_dst, my_rank);
+  received = Mat(rows,cols,0,buffer_to_recv);
+  imshow("Ricevuta dal padre", received*50);
+  waitKey(0);
 
   /* Terminate MPI */
   MPI_Finalize();
