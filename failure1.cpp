@@ -15,9 +15,9 @@ const int MAXBYTES=8*1024*1024;
 uchar buffer[MAXBYTES];
 uchar buffer_to_recv[MAXBYTES];
 uchar buffer_to_send[MAXBYTES];
-int my_rank, size, rows, cols, bytes;
+int my_rank, size, rows, cols, bytes, element_size, modality;
 Mat src;
-int dims[2];
+int dims[4];
 
 // direction vectors
 const int dx[] = {+1, 0, -1, 0};
@@ -109,7 +109,7 @@ void matscatter(Mat& m, int my_rank){
 
 }
 
-void second_matscatter(Mat& m, int my_rank){
+void second_matscatter(Mat& m, int my_rank, int element_size, int modality){
   if(my_rank == 0){
     cols = m.cols;
     rows = m.rows;
@@ -129,10 +129,12 @@ void second_matscatter(Mat& m, int my_rank){
 
     dims[0] = ((rows+size)/size);
     dims[1] = cols;
+    dims[2] = element_size;
+    dims[3] = modality;
 
 
     for(int i = 1; i < size; i++){
-      MPI_Send(&dims,2*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
+      MPI_Send(&dims,4*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
       /*
       memcpy(&buffer_to_send[0*sizeof(int)],m.data+160*161/size, 160*161/size);
       Mat mat_to_snd = Mat(rows+size, cols,0,buffer);
@@ -144,15 +146,18 @@ void second_matscatter(Mat& m, int my_rank){
   }
   else {
     MPI_Status status;
-    MPI_Recv(&dims,2*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
+    MPI_Recv(&dims,4*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
     printf("RICEVUTO %d\n", dims[0]*dims[1]);
-
   }
 
   bytes = dims[0]*dims[1];
   rows = dims[0];
   cols = dims[1];
-  //
+  element_size = dims[2];
+  modality = dims[3];
+  printf("\nELEMENT SIZE IN SECOND SCATTER: %d\n", element_size);
+  printf("\nmodality IN SECOND SCATTER: %d\n", modality);
+
   MPI_Scatter(&buffer, bytes, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
 
@@ -174,7 +179,9 @@ void matgather(Mat& m) {
 
 int main(int argc, char* argv[])
 {
-  Mat label_dst;
+  Mat label_dst, element, dilation_dst, erosion_dst, solution;
+  int i, j, quattro;
+  Scalar sum_var;
 
   MPI_Init(&argc, &argv);
 
@@ -186,11 +193,10 @@ int main(int argc, char* argv[])
 
   if(my_rank == 0)
   {
-    int i, j, element_size, quattro, mode;
-    mode = atoi(argv[2]) + 1 ;
+    modality = atoi(argv[2]) + 1 ;
 
-    if(mode<2 || mode>3) {
-      fprintf(stderr, "Wrong mode: 1 or 2\n");
+    if(modality<2 || modality>3) {
+      fprintf(stderr, "Wrong modality: 1 or 2\n");
       exit(-2);
     }
 
@@ -233,49 +239,57 @@ int main(int argc, char* argv[])
   // waitKey(0);
 
   if(my_rank == 0) {
+    sum_var = sum(received.row(0));
+    element_size = received.cols - sum_var.val[0];
+    std::cout << "\nElement size:" << element_size << '\n';
+
+    if(!element_size) {
+      sum_var = sum(received.col(0));
+      element_size = received.rows - sum_var.val[0];
+      std::cout << "\nElement size:" << element_size << '\n';
+    }
+
+    if(!element_size) {
+      sum_var = sum(received.row(rows-1));
+      element_size = received.cols - sum_var.val[0];
+      std::cout << "\nElement size:" << element_size << '\n';
+    }
+
     label_dst = Mat::zeros(received.rows, received.cols, CV_8UC1);
     label_dst = find_components(received, label_dst);
     imshow("Components", label_dst*50);
     waitKey(0);
 
-
-    // std::vector<int> up;
-    // label_dst.row(0).copyTo(up);
-    // std::sort(up.begin(), up.end());
-    // // for (int el: up)
-    // // std::cout << "(" << el << ") ";
-    // // printf("\n\n");
-    //
-    // std::vector<int> down;
-    // label_dst.row(label_dst.rows-1).copyTo(down);
-    // std::sort(down.begin(), down.end());
-    // // for (int el: down)
-    // // std::cout << "(" << el << ") ";
-    // // printf("\n\n");
-    //
-    // std::vector<int> left;
-    // label_dst.col(0).copyTo(left);
-    // std::sort(left.begin(), left.end());
-    // // for (int el: left)
-    // // std::cout << "(" << el << ") ";
-    // // printf("\n\n");
-    //
-    // std::vector<int> right;
-    // label_dst.col(label_dst.cols-1).copyTo(right);
-    // std::sort(right.begin(), right.end());
-    // // for (int el: right)
-    // // std::cout << "(" << el << ") ";
-    // // printf("\n\n");
-    //
-    // for (size_t i = 0; i < 2; i++) {
-    //   if(up.at(i) == 0)
-    // }
-
   } //close of the if for father process
 
-  second_matscatter(label_dst, my_rank);
+  second_matscatter(label_dst, my_rank, element_size, modality);
   received = Mat(rows,cols,0,buffer_to_recv);
   imshow("Ricevuta dal padre", received*50);
+  waitKey(0);
+
+  for(i = 0; i<rows; i++)
+  for(j = 0 ; j<cols; j++){
+    if(received.at<unsigned char>(i,j) != 1)
+    received.at<unsigned char>(i,j) = 0;
+    else {
+      received.at<unsigned char>(i,j) = 1;
+    }
+  }
+
+  imshow("Before delation", received*255);
+  waitKey(0);
+  printf("modality --> %d\n", modality);
+  element = getStructuringElement( MORPH_RECT, Size(element_size*modality, element_size*modality));
+  dilate(received, dilation_dst, element);
+  imshow("Dilation", dilation_dst*255);
+  waitKey(0);
+
+  erode(dilation_dst, erosion_dst, element);
+  imshow( "Erosion Demo", erosion_dst *255);
+  waitKey(0);
+
+  absdiff(dilation_dst, erosion_dst, solution);
+  imshow( "Solution Demo", solution *255);
   waitKey(0);
 
   /* Terminate MPI */
