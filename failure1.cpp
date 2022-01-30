@@ -15,7 +15,7 @@ const int MAXBYTES=8*1024*1024;
 uchar buffer[MAXBYTES];
 uchar buffer_to_recv[MAXBYTES];
 uchar buffer_to_send[MAXBYTES];
-int my_rank, size, rows, cols, bytes, element_size, modality;
+int my_rank, size, rows, cols, bytes;
 Mat src;
 int dims[4];
 
@@ -109,7 +109,7 @@ void matscatter(Mat& m, int my_rank){
 
 }
 
-void second_matscatter(Mat& m, int my_rank, int element_size, int modality){
+void second_matscatter(Mat& m, int my_rank, int &element_size, int &modality){
   if(my_rank == 0){
     cols = m.cols;
     rows = m.rows;
@@ -180,7 +180,7 @@ void matgather(Mat& m) {
 int main(int argc, char* argv[])
 {
   Mat label_dst, element, dilation_dst, erosion_dst, solution;
-  int i, j, quattro;
+  int i, j, quattro, modality, element_size;
   Scalar sum_var;
 
   MPI_Init(&argc, &argv);
