@@ -119,6 +119,7 @@ void second_matscatter(Mat& m, int my_rank, int &element_size, int &modality){
     }
 
     //each submatrix contains the first row of the following submatrix
+    //better if we send 25% of the following block
     for (size_t i = 0; i < size; i++) {
       int to_copy = (bytes/size)+cols;
       memcpy(&buffer[(i*bytes/size)+i*cols],&m.data[(i*bytes/size)], to_copy);
@@ -235,7 +236,6 @@ int main(int argc, char* argv[])
     for(int j = 0; j < received.cols; j++){
       received.at<unsigned char>(i,j) = (received.at<unsigned char>(i,j) - 1) * (-1);
     }
-
   }
 
   matgather(received);
@@ -278,23 +278,31 @@ int main(int argc, char* argv[])
       received.at<unsigned char>(i,j) = 1;
     }
   }
+  char filename[50];
+  // imshow("Before delation", received*255);
+  // waitKey(2000);
+  sprintf(filename, "results/BeforeDilation%d.png", my_rank);
+  imwrite(filename, received*255);
 
-  
-  imshow("Before delation", received*255);
-  waitKey(2000);
   printf("modality --> %d\n", modality);
   element = getStructuringElement( MORPH_RECT, Size(element_size*modality, element_size*modality));
   dilate(received, dilation_dst, element);
-  imshow("Dilation", dilation_dst*255);
-  waitKey(2000);
+  sprintf(filename, "results/Dilation%d.png", my_rank);
+  imwrite(filename, dilation_dst*255);
+  // imshow("Dilation", dilation_dst*255);
+  // waitKey(2000);
 
   erode(dilation_dst, erosion_dst, element);
-  imshow( "Erosion Demo", erosion_dst *255);
-  waitKey(2000);
+  sprintf(filename, "results/Erosion%d.png", my_rank);
+  imwrite(filename, erosion_dst*255);
+  // imshow( "Erosion Demo", erosion_dst *255);
+  // waitKey(2000);
 
   absdiff(dilation_dst, erosion_dst, solution);
-  imshow( "Solution Demo", solution *255);
-  waitKey(2000);
+  sprintf(filename, "results/Solution%d.png", my_rank);
+  imwrite(filename, solution*255);
+  // imshow( "Solution Demo", solution *255);
+  // waitKey(2000);
 
   second_matgather(solution);
 
