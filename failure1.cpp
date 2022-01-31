@@ -55,23 +55,18 @@ Mat find_components(Mat& rcv, Mat& label_dst) {
 void matscatter(Mat& m, int my_rank){
   if(my_rank == 0){
     cols = m.cols;
+    rows = m.rows;
 
     int bytespersample=1; // change if using shorts or floats
     bytes=m.rows*m.cols*bytespersample;
 
     cout << "matsnd: bytes=" << bytes << endl;
-    cout << endl << m << endl << endl;
     if(!m.isContinuous())
     {
       m = m.clone();
     }
 
     memcpy(&buffer[0*sizeof(int)],m.data,bytes);
-
-    printf("to send: ");
-    for (int i = 0; i < bytes; i++){
-      printf("%hhu ", buffer[i]);
-    }
 
     dims[0] = (rows/size);
     dims[1] = cols;
@@ -83,7 +78,7 @@ void matscatter(Mat& m, int my_rank){
       memcpy(&buffer_to_send[0*sizeof(int)],m.data+160*161/size, 160*161/size);
       Mat mat_to_snd = Mat(80, 161,0,buffer_to_send);
       imshow("mat to send", mat_to_snd);
-      waitKey(0);
+      waitKey(2000);
       */
     }
 
@@ -122,12 +117,14 @@ void second_matscatter(Mat& m, int my_rank, int &element_size, int &modality){
     {
       m = m.clone();
     }
+
+    //each submatrix contains the first row of the following submatrix
     for (size_t i = 0; i < size; i++) {
       int to_copy = (bytes/size)+cols;
       memcpy(&buffer[(i*bytes/size)+i*cols],&m.data[(i*bytes/size)], to_copy);
     }
 
-    dims[0] = ((rows+size)/size);
+    dims[0] = (rows/size)+1;
     dims[1] = cols;
     dims[2] = element_size;
     dims[3] = modality;
@@ -139,7 +136,7 @@ void second_matscatter(Mat& m, int my_rank, int &element_size, int &modality){
       memcpy(&buffer_to_send[0*sizeof(int)],m.data+160*161/size, 160*161/size);
       Mat mat_to_snd = Mat(rows+size, cols,0,buffer);
       imshow("mat to send", mat_to_snd*50);
-      waitKey(0);
+      waitKey(2000);
       */
     }
 
@@ -173,6 +170,17 @@ void matgather(Mat& m) {
   if(my_rank == 0) {
     m = Mat(rows*size,cols,0,buffer);
     imshow("Returned", m*255);
+    waitKey(2000);
+  }
+}
+
+void second_matgather(Mat& m) {
+  std::cout << "rows, cols, bytes: " << rows << " " << cols << " " << bytes << '\n';
+  memcpy(&buffer_to_recv[0*sizeof(int)],m.data,bytes);
+  MPI_Gather(&buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, buffer, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+  if(my_rank == 0) {
+    m = Mat(rows*size,cols,0,buffer);
+    imshow("Returned solution", m*255);
     waitKey(0);
   }
 }
@@ -203,14 +211,14 @@ int main(int argc, char* argv[])
     src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
     int height = src.rows - (src.rows%size);
     int width = src.cols;
+
+    std::cout << "BEFORE RESIZE rows, cols: " << src.rows << " " << src.cols << '\n';
     resize(src, src, Size(width, height));
     rows = src.rows;
     cols = src.cols;
-    // printf("%d x %d\n", src.rows, src.cols);
-    // getchar();
-    //cout << endl << src << endl << endl;
+    std::cout << "AFTER RESIZE rows, cols: " << rows << " " << cols << '\n';
     imshow("Resized", src);
-    waitKey(0);
+    waitKey(2000);
   }
 
   matscatter(src, my_rank);
@@ -228,15 +236,11 @@ int main(int argc, char* argv[])
       received.at<unsigned char>(i,j) = (received.at<unsigned char>(i,j) - 1) * (-1);
     }
 
-    //Printing the thresholded and complemented matrix
-    // cout << endl << received << endl << endl;
-    // imshow("Thresholded and complemented", received*255);
-    // waitKey(0);
   }
 
   matgather(received);
   // imshow("Received in main", received*50);
-  // waitKey(0);
+  // waitKey(2000);
 
   if(my_rank == 0) {
     sum_var = sum(received.row(0));
@@ -250,7 +254,7 @@ int main(int argc, char* argv[])
     }
 
     if(!element_size) {
-      sum_var = sum(received.row(rows-1));
+      sum_var = sum(received.row(received.rows-1));
       element_size = received.cols - sum_var.val[0];
       std::cout << "\nElement size:" << element_size << '\n';
     }
@@ -258,14 +262,13 @@ int main(int argc, char* argv[])
     label_dst = Mat::zeros(received.rows, received.cols, CV_8UC1);
     label_dst = find_components(received, label_dst);
     imshow("Components", label_dst*50);
-    waitKey(0);
-
+    waitKey(2000);
   } //close of the if for father process
 
   second_matscatter(label_dst, my_rank, element_size, modality);
   received = Mat(rows,cols,0,buffer_to_recv);
   imshow("Ricevuta dal padre", received*50);
-  waitKey(0);
+  waitKey(2000);
 
   for(i = 0; i<rows; i++)
   for(j = 0 ; j<cols; j++){
@@ -276,21 +279,24 @@ int main(int argc, char* argv[])
     }
   }
 
+  
   imshow("Before delation", received*255);
-  waitKey(0);
+  waitKey(2000);
   printf("modality --> %d\n", modality);
   element = getStructuringElement( MORPH_RECT, Size(element_size*modality, element_size*modality));
   dilate(received, dilation_dst, element);
   imshow("Dilation", dilation_dst*255);
-  waitKey(0);
+  waitKey(2000);
 
   erode(dilation_dst, erosion_dst, element);
   imshow( "Erosion Demo", erosion_dst *255);
-  waitKey(0);
+  waitKey(2000);
 
   absdiff(dilation_dst, erosion_dst, solution);
   imshow( "Solution Demo", solution *255);
-  waitKey(0);
+  waitKey(2000);
+
+  second_matgather(solution);
 
   /* Terminate MPI */
   MPI_Finalize();
