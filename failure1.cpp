@@ -15,6 +15,7 @@ const int MAXBYTES=8*1024*1024;
 uchar buffer[MAXBYTES];
 uchar buffer_to_recv[MAXBYTES];
 uchar buffer_to_send[MAXBYTES];
+uchar solution_buffer[MAXBYTES];
 int my_rank, size, rows, cols, bytes;
 Mat src;
 int dims[4];
@@ -88,7 +89,6 @@ void matscatter(Mat& m, int my_rank){
     MPI_Recv(&dims,2*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
 
     printf("RICEVUTO %d\n", dims[0]*dims[1]);
-
   }
 
   bytes = dims[0]*dims[1];
@@ -120,48 +120,56 @@ void second_matscatter(Mat& m, int my_rank, int &element_size, int &modality){
 
     //each submatrix contains the first row of the following submatrix
     //better if we send 25% of the following block
+    /*
     for (size_t i = 0; i < size; i++) {
-      int to_copy = (bytes/size)+cols;
-      memcpy(&buffer[(i*bytes/size)+i*cols],&m.data[(i*bytes/size)], to_copy);
-    }
-
-    dims[0] = (rows/size)+1;
-    dims[1] = cols;
-    dims[2] = element_size;
-    dims[3] = modality;
-
-
-    for(int i = 1; i < size; i++){
-      MPI_Send(&dims,4*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
-      /*
-      memcpy(&buffer_to_send[0*sizeof(int)],m.data+160*161/size, 160*161/size);
-      Mat mat_to_snd = Mat(rows+size, cols,0,buffer);
-      imshow("mat to send", mat_to_snd*50);
-      waitKey(2000);
-      */
-    }
-
+    int to_copy = (bytes/size)+cols;
+    memcpy(&buffer[(i*bytes/size)+i*cols],&m.data[(i*bytes/size)], to_copy);
   }
-  else {
-    MPI_Status status;
-    MPI_Recv(&dims,4*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
-    printf("RICEVUTO %d\n", dims[0]*dims[1]);
+  */
+
+  int piecetobring = element_size*modality;
+  for (size_t i = 0; i < size; i++) {
+    int to_copy = (bytes/size)+cols*piecetobring;
+    memcpy(&buffer[(i*bytes/size)+i*cols*piecetobring],&m.data[(i*bytes/size)], to_copy);
   }
 
-  bytes = dims[0]*dims[1];
-  rows = dims[0];
-  cols = dims[1];
-  element_size = dims[2];
-  modality = dims[3];
-  printf("\nELEMENT SIZE IN SECOND SCATTER: %d\n", element_size);
-  printf("\nmodality IN SECOND SCATTER: %d\n", modality);
-
-  MPI_Scatter(&buffer, bytes, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+  dims[0] = (rows/size)+piecetobring;
+  dims[1] = cols;
+  dims[2] = element_size;
+  dims[3] = modality;
 
 
-  // for (int i = 0; i < bytes; i++){
-  // printf("process: %d, element n. %d ---> %hhu\n", my_rank, i, buffer_to_recv[i]);
-  // }
+  for(int i = 1; i < size; i++){
+    MPI_Send(&dims,4*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
+    /*
+    memcpy(&buffer_to_send[0*sizeof(int)],m.data+160*161/size, 160*161/size);
+    Mat mat_to_snd = Mat(rows+size, cols,0,buffer);
+    imshow("mat to send", mat_to_snd*50);
+    waitKey(2000);
+    */
+  }
+
+}
+else {
+  MPI_Status status;
+  MPI_Recv(&dims,4*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
+  printf("RICEVUTO %d\n", dims[0]*dims[1]);
+}
+
+bytes = dims[0]*dims[1];
+rows = dims[0];
+cols = dims[1];
+element_size = dims[2];
+modality = dims[3];
+printf("\nELEMENT SIZE IN SECOND SCATTER: %d\n", element_size);
+printf("\nmodality IN SECOND SCATTER: %d\n", modality);
+
+MPI_Scatter(&buffer, bytes, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
+
+// for (int i = 0; i < bytes; i++){
+// printf("process: %d, element n. %d ---> %hhu\n", my_rank, i, buffer_to_recv[i]);
+// }
 
 }
 
@@ -175,14 +183,29 @@ void matgather(Mat& m) {
   }
 }
 
-void second_matgather(Mat& m) {
+void second_matgather(Mat m, int element_size, int modality) {
   std::cout << "rows, cols, bytes: " << rows << " " << cols << " " << bytes << '\n';
   memcpy(&buffer_to_recv[0*sizeof(int)],m.data,bytes);
+
   MPI_Gather(&buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, buffer, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
   if(my_rank == 0) {
-    m = Mat(rows*size,cols,0,buffer);
-    imshow("Returned solution", m*255);
-    waitKey(0);
+    /*
+  for (size_t i = 0; i < bytes; i++) {
+    printf("%d ", buffer[i]);
+  }
+  */
+  m = Mat(rows*size,cols,0,buffer);
+  imshow("Returned solution", m*255);
+  waitKey(0);
+
+  /*
+  memcpy(&solution_buffer[0],&buffer[0],rows/size*cols+element_size*modality*cols);
+  memcpy(&solution_buffer[indice_inizio_copia],&buffer[rows/size*cols+2*element_size*modality*cols],rows/size*cols+element_size*modality*cols);
+  memcpy(&solution_buffer[2*indice_inizio_copia], &buffer[2*indice_inizio_copia+modality*element_size*cols],rows/size*cols+element_size*modality*cols);
+  memcpy(&solution_buffer[3*indice_inizio_copia], &buffer[3*indice_inizio_copia+2*modality*element_size*cols],rows/size*cols-element_size*modality*cols);
+  */
+
   }
 }
 
@@ -304,8 +327,32 @@ int main(int argc, char* argv[])
   // imshow( "Solution Demo", solution *255);
   // waitKey(2000);
 
-  second_matgather(solution);
+  second_matgather(solution, element_size, modality);
+  // for (size_t i = 1; i < size; i++) {
+  //   memcpy(&buffer[i*rows/size*cols+i*element_size*modality*cols],&buffer[rows/size*cols+(i+1)*element_size*modality*cols],rows/size*cols+element_size*modality*cols);
+  // }
+  //  memcpy(&buffer_to_recv[0*sizeof(int)],m.data,bytes);
+  if (my_rank == 0) {
+    /*
+    //this works almost fine
+    memcpy(&solution_buffer[0],&buffer[0],rows*cols); //checked
+    memcpy(&solution_buffer[rows*cols],&buffer[rows*cols+element_size*modality*cols],rows*cols-element_size*modality*cols);
+    memcpy(&solution_buffer[2*rows*cols-element_size*modality*cols], &buffer[2*rows*cols+modality*element_size*cols],rows*cols-element_size*modality*cols);
+    memcpy(&solution_buffer[3*rows*cols-2*element_size*modality*cols], &buffer[3*rows*cols+modality*element_size*cols],rows*cols-2*element_size*modality*cols);
+    */
 
+    int fragment = modality*element_size;
+    rows = rows - fragment;
+    memcpy(&solution_buffer[0],&buffer[0],(rows+fragment)*cols);
+    for (size_t i = 1; i < size-1; i++) {
+      memcpy(&solution_buffer[(i*rows+fragment)*cols],&buffer[(i*rows+(i+1)*fragment)*cols],rows*cols);
+    }
+    memcpy(&solution_buffer[((size-1)*rows+fragment)*cols],&buffer[((size-1)*rows+size*fragment)*cols],(rows-fragment)*cols);
+
+    Mat real_solution = Mat(rows*size, cols, 0, solution_buffer);
+    imshow("Real solution", real_solution*255);
+    waitKey(0);
+  }
   /* Terminate MPI */
   MPI_Finalize();
 
