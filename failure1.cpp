@@ -12,17 +12,14 @@ using namespace std;
 using namespace cv;
 
 const int MAXBYTES=8*1024*1024;
-uchar buffer[MAXBYTES];
-uchar buffer_to_recv[MAXBYTES];
-uchar buffer_to_send[MAXBYTES];
-uchar solution_buffer[MAXBYTES];
-int my_rank, size, rows, cols, bytes, myTurn;
-Mat src;
-int dims[4];
-MPI_Status status;
 // direction vectors
 const int dx[] = {+1, 0, -1, 0};
 const int dy[] = {0, +1, 0, -1};
+
+uchar buffer[MAXBYTES];
+uchar buffer_to_recv[MAXBYTES];
+int my_rank, size, rows, cols, bytes, dims[4];
+MPI_Status status;
 
 void checkNearByte(int current_label, int r, int c, Mat& src, Mat& label_dst) {
   rows = src.rows;
@@ -75,12 +72,6 @@ void matscatter(Mat& m, int my_rank){
 
     for(int i = 1; i < size; i++){
       MPI_Send(&dims,2*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
-      /*
-      memcpy(&buffer_to_send[0*sizeof(int)],m.data+160*161/size, 160*161/size);
-      Mat mat_to_snd = Mat(80, 161,0,buffer_to_send);
-      imshow("mat to send", mat_to_snd);
-      waitKey(2000);
-      */
     }
 
   }
@@ -121,10 +112,10 @@ void second_matscatter(Mat& m, int my_rank, int &element_size, int &modality){
     int piecetobring = element_size*modality;
     int to_copy = (bytes/size)+cols*piecetobring;
 
-    for (size_t i = 0; i < size; i++) {
-
+    for (int i = 0; i < size-1; i++) {
       memcpy(&buffer[(i*bytes/size)+i*cols*piecetobring],&m.data[(i*bytes/size)], to_copy);
     }
+    memcpy(&buffer[((size-1)*bytes/size)+(size-1)*cols*piecetobring],&m.data[((size-1)*bytes/size)], to_copy-piecetobring*cols);
 
     std::cout << "SECOND MATSCATTER TERMINATED" << '\n';
     dims[0] = (rows/size)+piecetobring;
@@ -189,16 +180,14 @@ void second_matgather(Mat& m, int fragment) {
 
     m = Mat(rows*size,cols,0,buffer);
     imshow("Returned solution", m*255);
-    waitKey(0);
+    // waitKey(0);
 
   }
 }
 
-
-
 int main(int argc, char* argv[])
 {
-  Mat label_dst, element, dilation_dst, erosion_dst, solution;
+  Mat src, label_dst, element, dilation_dst, erosion_dst, solution;
   int i, j, quattro, modality, element_size;
   Scalar sum_var;
 
@@ -351,7 +340,6 @@ int main(int argc, char* argv[])
   second_matgather(solution, fragment);
 
   /* Terminate MPI */
-
   MPI_Finalize();
 
   return 0;
