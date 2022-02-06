@@ -118,47 +118,47 @@ void second_matscatter(Mat& m, int my_rank, int &element_size, int &modality){
     }
 
 
-  int piecetobring = element_size*modality;
-  int to_copy = (bytes/size)+cols*piecetobring;
+    int piecetobring = element_size*modality;
+    int to_copy = (bytes/size)+cols*piecetobring;
 
-  for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
 
-    memcpy(&buffer[(i*bytes/size)+i*cols*piecetobring],&m.data[(i*bytes/size)], to_copy);
+      memcpy(&buffer[(i*bytes/size)+i*cols*piecetobring],&m.data[(i*bytes/size)], to_copy);
+    }
+
+    std::cout << "SECOND MATSCATTER TERMINATED" << '\n';
+    dims[0] = (rows/size)+piecetobring;
+    dims[1] = cols;
+    dims[2] = element_size;
+    dims[3] = modality;
+
+
+    for(int i = 1; i < size; i++){
+      MPI_Send(&dims,4*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
+
+    }
+
+  }
+  else {
+    MPI_Status status;
+    MPI_Recv(&dims,4*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
+    printf("RICEVUTO %d\n", dims[0]*dims[1]);
   }
 
-  std::cout << "SECOND MATSCATTER TERMINATED" << '\n';
-  dims[0] = (rows/size)+piecetobring;
-  dims[1] = cols;
-  dims[2] = element_size;
-  dims[3] = modality;
+  bytes = dims[0]*dims[1];
+  rows = dims[0];
+  cols = dims[1];
+  element_size = dims[2];
+  modality = dims[3];
+  printf("\nELEMENT SIZE IN SECOND SCATTER: %d\n", element_size);
+  printf("\nmodality IN SECOND SCATTER: %d\n", modality);
+
+  MPI_Scatter(&buffer, bytes, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
 
-  for(int i = 1; i < size; i++){
-    MPI_Send(&dims,4*sizeof(int),MPI_INT,i,555, MPI_COMM_WORLD);
-
-  }
-
-}
-else {
-  MPI_Status status;
-  MPI_Recv(&dims,4*sizeof(int),MPI_INT,0,555, MPI_COMM_WORLD, &status);
-  printf("RICEVUTO %d\n", dims[0]*dims[1]);
-}
-
-bytes = dims[0]*dims[1];
-rows = dims[0];
-cols = dims[1];
-element_size = dims[2];
-modality = dims[3];
-printf("\nELEMENT SIZE IN SECOND SCATTER: %d\n", element_size);
-printf("\nmodality IN SECOND SCATTER: %d\n", modality);
-
-MPI_Scatter(&buffer, bytes, MPI_UNSIGNED_CHAR, buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-
-
-// for (int i = 0; i < bytes; i++){
-// printf("process: %d, element n. %d ---> %hhu\n", my_rank, i, buffer_to_recv[i]);
-// }
+  // for (int i = 0; i < bytes; i++){
+  // printf("process: %d, element n. %d ---> %hhu\n", my_rank, i, buffer_to_recv[i]);
+  // }
 
 }
 
@@ -176,17 +176,20 @@ void second_matgather(Mat& m, int fragment) {
 
   std::cout << "rows, cols, bytes: " << rows << " " << cols << " " << bytes << '\n';
 
+  bytes = (m.rows)* m.cols ;
+  memcpy(&buffer_to_recv[0*sizeof(int)],m.data, bytes);
 
-  bytes = (m.rows - fragment)* m.cols ;
-  memcpy(&buffer_to_recv[0*sizeof(int)],m.data,bytes);
+  m = Mat(m.rows,cols,0,buffer_to_recv);
+  imshow("BEFORE TO SEND solution", m*255);
+  waitKey(1000);
 
   MPI_Gather(&buffer_to_recv, bytes, MPI_UNSIGNED_CHAR, buffer, bytes, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
   if(my_rank == 0) {
 
-  m = Mat(rows*size,cols,0,buffer);
-  imshow("Returned solution", m*255);
-  waitKey(0);
+    m = Mat(rows*size,cols,0,buffer);
+    imshow("Returned solution", m*255);
+    waitKey(0);
 
   }
 }
@@ -275,7 +278,6 @@ int main(int argc, char* argv[])
   MPI_Barrier(MPI_COMM_WORLD);
 
   second_matscatter(label_dst, my_rank, element_size, modality);
-  MPI_Barrier(MPI_COMM_WORLD);
 
   received = Mat(rows,cols,0,buffer_to_recv);
   imshow("Ricevuta dal padre", received*50);
@@ -315,6 +317,8 @@ int main(int argc, char* argv[])
   //imshow( "Solution Demo", solution *255);
   // waitKey(2000);
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
 
   int fragment = modality*element_size;
   rows = rows - fragment;
@@ -329,29 +333,22 @@ int main(int argc, char* argv[])
 
   MPI_Sendrecv(&buffer,bytes, MPI_INT, to, 111, &buffer_to_recv, bytes, MPI_INT, from, 111, MPI_COMM_WORLD, &status);
 
-  Mat fragmentReceived = Mat(fragment, cols, 0, buffer_to_recv);
-//  imshow("fragment received", fragmentReceived*255);
-  sprintf(filename, "Results/fragmentR%d.png", my_rank);
-  imwrite(filename, fragmentReceived*255);
+  Mat fragmentReceived;
+  if(my_rank == 0){
+    fragmentReceived = Mat::zeros(fragment, cols, 0);
 
-  if(my_rank){
-
-    Mat first = solution.rowRange(0, fragment);
-    bitwise_or(fragmentReceived, first, fragmentReceived);
-
-    imshow("SOLUTION BEFORE CHANGE", first*255);
-
-    solution.rowRange(0, fragment) = fragmentReceived;
-
-    imshow("SOLUTION AFTER CHANGE", fragmentReceived*255);
-
-    waitKey(0);
-
-
+  } else{
+    fragmentReceived = Mat(fragment, cols, 0, buffer_to_recv);
   }
 
-  second_matgather(solution, fragment);
+  Mat first = solution.rowRange(0, fragment);
+  bitwise_or(fragmentReceived, first, fragmentReceived);
+  vconcat(fragmentReceived, solution.rowRange(fragment, rows), solution);
+  solution.rowRange(0, fragment) = fragmentReceived;
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  second_matgather(solution, fragment);
 
   /* Terminate MPI */
 
