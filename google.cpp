@@ -146,6 +146,7 @@ void second_matgather(Mat& m, int fragment) {
     //Recontruction of the matrix --> final solution
     m = Mat(rows*size,cols,0,buffer);
     imwrite("results/FinalSolution.png", m*255);
+    std::cout << "All operations have been performed, see the results in results folder" << '\n';
   }
 }
 
