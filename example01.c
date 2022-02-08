@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include <mpi.h>
+
+
+#include "/usr/local/include/opencv2/imgproc.hpp"
+
 int main (int argc, char *argv[]) {
 int myrank, size;
 /* 1. Initialize MPI */
