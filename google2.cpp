@@ -39,9 +39,7 @@ Mat find_components(Mat& rcv, Mat& label_dst) {
   for (int j = 0; j < rcv.cols; j++)
   if (!label_dst.at<unsigned char>(i,j) && rcv.at<unsigned char>(i,j)) {
     checkNearByte(++component, i, j, rcv, label_dst);
-    printf("Sono entrato con i=%d e j=%d mentre label=%d\n", i, j, component);
   }
-  imshow("LABELLED MAT TO RETURN", label_dst*50);
   return label_dst;
 }
 
