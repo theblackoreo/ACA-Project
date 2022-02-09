@@ -3,20 +3,6 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cmath>
-//#include <opencv2/imgproc.hpp>
-//#include <opencv2/highgui.hpp>
-//#include "opencv2/imgcodecs/imgcodecs.hpp"
-//#include <opencv2/opencv.hpp>
-
-#include "/usr/local/include/opencv2/imgproc.hpp"
-#include "/usr/local/include/opencv2/highgui.hpp"
-#include "/usr/local/include/opencv2/opencv.hpp"
-#include "/usr/local/include/opencv2/core.hpp"
-#include "/usr/local/include/opencv2/dnn.hpp"
-
-
-
-
 
 using namespace std;
 using namespace cv;
