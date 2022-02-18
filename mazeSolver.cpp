@@ -12,6 +12,90 @@ using namespace std;
 Mat src, label_dst, erosion_dst, dilation_dst;
 int rows, cols;
 
+Mat binarization(Mat m){
+
+  for(int i = 0; i < rows; i++){
+    for(int j = 0; j < cols; j++){
+      if(m.at<unsigned char>(i,j) < 147)
+      m.at<unsigned char>(i,j) = 0;
+      else
+      m.at<unsigned char>(i,j) = 1;
+    }
+  }
+  return m;
+}
+
+Mat difference(Mat dil, Mat ero){
+
+  for(int i = 0; i < dil.rows; i++){
+    for(int j = 0; j < dil.cols; j++){
+      dil.at<unsigned char>(i,j) = dil.at<unsigned char>(i,j) - ero.at<unsigned char>(i,j);
+    }
+  }
+  return dil;
+}
+
+Mat hopeErode(Mat m, int element_size){
+
+  int n = 0;
+  Mat eroded = m.clone();
+
+  while(n < element_size/2){
+    for(int i = 1; i < m.rows -1 ; i++){
+      for(int j = 1; j < m.cols -1; j++){
+
+        if(m.at<unsigned char>(i,j) && m.at<unsigned char>(i+1,j) && m.at<unsigned char>(i+1,j+1) &&
+        m.at<unsigned char>(i,j+1) && m.at<unsigned char>(i-1,j+1) && m.at<unsigned char>(i-1,j) &&
+        m.at<unsigned char>(i-1,j-1) && m.at<unsigned char>(i,j-1) && m.at<unsigned char>(i+1,j-1));
+
+        else{
+          eroded.at<unsigned char>(i,j) = 0;
+          eroded.at<unsigned char>(i+1,j)= 0;
+          eroded.at<unsigned char>(i+1,j+1)= 0;
+          eroded.at<unsigned char>(i,j+1)= 0;
+          eroded.at<unsigned char>(i-1,j+1)= 0;
+          eroded.at<unsigned char>(i-1,j)= 0;
+          eroded.at<unsigned char>(i-1,j-1)= 0;
+          eroded.at<unsigned char>(i,j-1)= 0;
+          eroded.at<unsigned char>(i+1,j-1)= 0;
+        }
+      }
+    }
+    n++;
+    m = eroded.clone();
+  }
+  return eroded;
+}
+
+Mat hopeDilate(Mat m, int element_size) {
+  int i,j,n = 0;
+  Mat dilated = m.clone();
+
+  while (n < element_size/2) {
+    for(i = 1; i < m.rows-1; i++) {
+      for (j = 1; j < m.cols-1; j++) {
+        if(!m.at<unsigned char>(i,j) && !m.at<unsigned char>(i+1,j) && !m.at<unsigned char>(i+1,j+1) &&
+        !m.at<unsigned char>(i,j+1) && !m.at<unsigned char>(i-1,j+1) && !m.at<unsigned char>(i-1,j) &&
+        !m.at<unsigned char>(i-1,j-1) && !m.at<unsigned char>(i,j-1) && !m.at<unsigned char>(i+1,j-1));
+        else {
+          dilated.at<unsigned char>(i-1,j-1) = 1;
+          dilated.at<unsigned char>(i-1,j) = 1;
+          dilated.at<unsigned char>(i-1,j+1) = 1;
+          dilated.at<unsigned char>(i,j-1) = 1;
+          dilated.at<unsigned char>(i,j) = 1;
+          dilated.at<unsigned char>(i,j+1) = 1;
+          dilated.at<unsigned char>(i+1,j-1) = 1;
+          dilated.at<unsigned char>(i+1,j) = 1;
+          dilated.at<unsigned char>(i+1,j+1) = 1;
+        }
+      }
+    }
+    m = dilated.clone();
+    n++;
+  }
+  return dilated;
+}
+
 // direction vectors
 const int dx[] = {+1, 0, -1, 0};
 const int dy[] = {0, +1, 0, -1};
@@ -42,25 +126,17 @@ void find_components() {
 }
 
 int main(int argc, char*argv[]){
-  if(argc != 3) {
-    fprintf(stderr, "Wrong number of parameters: ./mazeSolver <file> <size of path: 1 or 2>\n");
+  if(argc != 2) {
+    fprintf(stderr, "Wrong number of parameters: ./mazeSolver <file>\n");
     exit(-1);
   }
 
-  int i, j, element_size, quattro, mode;
-  mode = atoi(argv[2]) + 1 ;
-  quattro = 4;
-
-  if(mode<2 || mode>3) {
-    fprintf(stderr, "Wrong mode: 1 or 2\n");
-    exit(-2);
-  }
+  int i, j, element_size;
 
   src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
-  threshold(src, src, 127,1,THRESH_BINARY);
-
   rows = src.rows;
   cols = src.cols;
+  src = binarization(src);
 
   //Complememt
   for(i = 0; i < rows; i++){
@@ -71,17 +147,26 @@ int main(int argc, char*argv[]){
 
   //Evaluation of the element size based on the maze to be solved
   //Three sides must be checked to be sure to find at least one way out
-  Scalar sum_var = sum(src.row(0));
-  element_size = cols - sum_var.val[0];
+  int sum_var = 0;
+  for(j = 0; j < cols; j++) {
+    sum_var += src.at<unsigned char>(0,j);
+  }
+  element_size = cols - sum_var;
 
   if(!element_size) {
-    sum_var = sum(src.col(0));
-    element_size = rows - sum_var.val[0];
+    sum_var = 0;
+    for(i = 0; i < rows; i++) {
+      sum_var += src.at<unsigned char>(i,0);
+    }
+    element_size = rows - sum_var;
   }
 
   if(!element_size) {
-    sum_var = sum(src.row(rows-1));
-    element_size = cols - sum_var.val[0];
+    sum_var = 0;
+    for(j = 0; j < cols; j++) {
+      sum_var += src.at<unsigned char>(rows-1,j);
+    }
+    element_size = cols - sum_var;
   }
 
   // labelization
@@ -97,14 +182,10 @@ int main(int argc, char*argv[]){
       label_dst.at<unsigned char>(i,j) = 1;
     }
   }
-
-  Mat element = getStructuringElement( MORPH_RECT, Size(element_size*mode, element_size*mode));
-  dilate(label_dst, dilation_dst, element);
-
-  erode(dilation_dst, erosion_dst, element);
-
-  Mat solution = Mat::zeros(rows, cols, CV_8UC1);
-  absdiff(dilation_dst, erosion_dst, solution);
+  dilation_dst = hopeDilate(label_dst, element_size);
+  erosion_dst = hopeErode(dilation_dst, element_size);
+  Mat solution = dilation_dst.clone();
+  solution = difference(dilation_dst, erosion_dst);
   return 0;
 
 }
