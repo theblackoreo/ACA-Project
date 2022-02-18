@@ -101,7 +101,7 @@ const int dx[] = {+1, 0, -1, 0};
 const int dy[] = {0, +1, 0, -1};
 
 //function to check in all directions (4-conn)
-void checkNearByte(int current_label, int r, int c, Mat src) {
+void checkNearByte(int current_label, int r, int c) {
   if (r < 0 || r == rows) return; // out of bounds
   if (c < 0 || c == cols) return; // out of bounds
   if (label_dst.at<unsigned char>(r,c) || !src.at<unsigned char>(r,c)) return; // already labeled or not marked with 1 in src
@@ -111,7 +111,7 @@ void checkNearByte(int current_label, int r, int c, Mat src) {
 
   // recursively mark the neighbors
   for (int direction = 0; direction < 4; ++direction)
-  checkNearByte(current_label, r + dx[direction], c + dy[direction], src);
+  checkNearByte(current_label, r + dx[direction], c + dy[direction]);
 }
 
 //function to identify different regions of the labirinth
@@ -120,10 +120,11 @@ void find_components() {
   for (int i = 0; i < rows; i++)
     for (int j = 0; j < cols; j++) {
       if (!label_dst.at<unsigned char>(i,j) && src.at<unsigned char>(i,j)) {
-        checkNearByte(++component, i, j, src);
+        checkNearByte(++component, i, j);
       }
     }
 }
+
 
 int main(int argc, char*argv[]){
   if(argc != 2) {
@@ -186,6 +187,9 @@ int main(int argc, char*argv[]){
   erosion_dst = hopeErode(dilation_dst, element_size);
   Mat solution = dilation_dst.clone();
   solution = difference(dilation_dst, erosion_dst);
+
+  imshow("SOlution", solution*255);
+  waitKey(0);
   return 0;
 
 }
