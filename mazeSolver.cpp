@@ -127,12 +127,18 @@ void find_components() {
 
 
 int main(int argc, char*argv[]){
+  int64 tin, t1, t2, tfi;
+  double timing;
+  int64 clock;
+
   if(argc != 2) {
     fprintf(stderr, "Wrong number of parameters: ./mazeSolver <file>\n");
     exit(-1);
   }
 
   int i, j, element_size;
+
+  t1 = getTickCount();
 
   src = imread(argv[1], IMREAD_REDUCED_GRAYSCALE_2);
   rows = src.rows;
@@ -188,8 +194,12 @@ int main(int argc, char*argv[]){
   Mat solution = dilation_dst.clone();
   solution = difference(dilation_dst, erosion_dst);
 
-  imshow("SOlution", solution*255);
-  waitKey(0);
+  t2 = getTickCount();
+  timing = (t2-t1)/getTickFrequency();
+  clock = t2 - t1;
+  std::cout << "\nTotal time (s): " << timing << '\n';
+  std::cout << "\nTotal n clock cycles: " << clock << '\n';
+
   return 0;
 
 }

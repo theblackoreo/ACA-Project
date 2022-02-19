@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
   int i, j, quattro, element_size;
   int sum_var;
   char filename[50];
-  int64 tin, t1, t2, tfi;
+  int64 tin, t1, t2, tfi, clock;
   double timing;
 
   MPI_Init(&argc, &argv);
@@ -386,7 +386,9 @@ int main(int argc, char* argv[])
   if(my_rank == 0) {
     t2 = getTickCount();
     timing = (t2-t1)/getTickFrequency();
+    clock = t2 - t1;
     std::cout << "\nTotal time (s): " << timing << '\n';
+    std::cout << "\nTotal n clock cycles: " << clock << '\n';
   }
 
   /* Terminate MPI */
