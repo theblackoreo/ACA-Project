@@ -34,7 +34,7 @@ To reach the aim mentioned above the OpenCV library is used given that it provid
 HOW TO RUN
 
   - step 1: Clone the repository with "git clone" or download the folder from this page
-  - step 3: execute the command 'ulimit -s unlimited', it is necessary to increase stack for very big matrices (until 72 billion of pixels)
+  - step 3: execute the command 'ulimit -s unlimited', it is necessary to increase stack for very big matrices (until 72 millions of pixels)
   - step 4: Compile the program with a mpic++ compiler (Ubuntu: mpic++ --std=c++11 $(pkg-config --cflags --libs opencv)) googleFinal.cpp -o googlefinal
   - step 5: Run the program specifing the image source. (i.e Ubuntu: mpirun -n "ncores" ./googlefinal test5.png)
 
