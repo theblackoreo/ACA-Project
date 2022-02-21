@@ -5,7 +5,7 @@
  - The maze must have only one entrance and one exit.
  - The maze must be a “perfect maze”, this means that only one path solves the labyrinth;
 
-To reach the aim mentioned above the OpenCV library is used given that it provides optimised operations to deal with images and matrices.
+To reach the aim mentioned above the OpenCV library is used given that it provides optimised functions to deal with images and matrices.
 
 ## Serial Mze Solver Algorithm
 
@@ -13,7 +13,7 @@ To reach the aim mentioned above the OpenCV library is used given that it provid
 
  Library:
 
- OpenCV installed in own computer
+ OpenCV installed on your own computer
 
  HOW TO RUN
 
