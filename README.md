@@ -20,7 +20,8 @@ To reach the aim mentioned above the OpenCV library is used given that it provid
   - step 1: Clone the repository with "git clone" or download the folder from this page
   - step 2: execute the command 'ulimit -s unlimited', it is necessary to increase stack for very big matrices (until 72 billion of pixels)
   - step 3: Compile the program with a c++ compiler (Ubuntu: g++ mazeSolver.cpp -o mazeSolver -std=c++11 $(pkg-config --cflags --libs opencv))
-  - step 4: Run the program specifing the image source. (i.e Ubuntu: ./mazeSolver test5.png)
+  - steo 4: create a "results" folder in the same directory (mkdir results)
+  - step 5: Run the program specifing the image source. (i.e Ubuntu: ./mazeSolver test5.png) 
 
 ## Parallel implementation
  
